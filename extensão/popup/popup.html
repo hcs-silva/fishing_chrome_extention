@@ -1,43 +1,63 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <link rel="stylesheet" href="popup.css">
-</head>
-<body>
-  <div id="app">
-    <div class="header">
-      <h2 id="spotNome">A carregar...</h2>
-      <span id="scoreBadge" class="badge">?</span>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="header">
+        <h2 id="spotNome">A carregar...</h2>
+        <span id="scoreBadge" class="badge">?</span>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <strong>🌓 Maré</strong>
+          <p id="mare"></p>
+        </div>
+        <div class="info-card">
+          <strong>🌊 Ondas</strong>
+          <p id="ondas"></p>
+        </div>
+        <div class="info-card">
+          <strong>🌡️ Água</strong>
+          <p id="tempAgua"></p>
+        </div>
+      </div>
+
+      <div class="recomendacao" id="recomendacao"></div>
+
+      <select id="spotSelect">
+        <option value="1">Costa da Caparica</option>
+        <option value="2">Ericeira</option>
+        <option value="3">Peniche</option>
+        <option value="4">Nazaré</option>
+        <option value="5">Sagres</option>
+        <option value="6">Sesimbra</option>
+        <option value="7">Aveiro</option>
+      </select>
+
+      <!-- Settings -->
+      <div class="settings-row">
+        <button id="settingsBtn" class="settings">⚙️ Settings</button>
+        <small id="currentApi" class="current-api"></small>
+      </div>
+
+      <div id="settingsPanel" class="settings-panel hidden">
+        <label for="apiUrlInput">API URL</label>
+        <input
+          id="apiUrlInput"
+          type="text"
+          placeholder="https://your-backend.onrender.com/api/previsao"
+        />
+        <div class="settings-actions">
+          <button id="saveApiBtn" class="btn">Guardar</button>
+          <button id="resetApiBtn" class="btn secondary">Repor default</button>
+        </div>
+        <div id="settingsMsg" class="settings-msg"></div>
+      </div>
     </div>
-    
-    <div class="info-grid">
-      <div class="info-card">
-        <strong>🌓 Maré</strong>
-        <p id="mare"></p>
-      </div>
-      <div class="info-card">
-        <strong>🌊 Ondas</strong>
-        <p id="ondas"></p>
-      </div>
-      <div class="info-card">
-        <strong>🌡️ Água</strong>
-        <p id="tempAgua"></p>
-      </div>
-    </div>
-    
-    <div class="recomendacao" id="recomendacao"></div>
-    
-    <select id="spotSelect">
-      <option value="1">Costa da Caparica</option>
-      <option value="2">Ericeira</option>
-      <option value="3">Peniche</option>
-      <option value="4">Nazaré</option>
-      <option value="5">Sagres</option>
-      <option value="6">Sesimbra</option>
-      <option value="7">Aveiro</option>
-    </select>
-  </div>
-  <script src="popup.js"></script>
-</body>
+    <script src="popup.js"></script>
+  </body>
 </html>

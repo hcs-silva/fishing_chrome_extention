@@ -4,22 +4,23 @@
   "version": "1.0.0",
   "description": "Marés, ondas e actividade de peixe em Portugal",
   "icons": {
-    "16": "icons/icon-16.png",
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
-      "16": "icons/icon-16.png",
-      "48": "icons/icon-48.png"
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     }
   },
   "permissions": ["storage", "geolocation"],
   "host_permissions": [
     "http://localhost:3000/*",
     "http://localhost:5005/*",
-    "https://teu-backend.com/*"
+    "https://fishing-chrome-extention.onrender.com/*"
   ],
   "background": {
     "service_worker": "background.js"

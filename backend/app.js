@@ -9,7 +9,7 @@ connectDB();
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
-  : ["http://localhost:3000", "http://localhost:5005"];
+  : ["http://localhost:3000", "http://localhost:5005", "https://fishing-chrome-extention.onrender.com"];
 app.use(
   cors({
     origin: (origin, callback) => {
