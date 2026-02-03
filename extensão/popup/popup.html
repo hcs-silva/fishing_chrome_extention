@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <div class="header">
+      <h2 id="spotNome">A carregar...</h2>
+      <span id="scoreBadge" class="badge">?</span>
+    </div>
+    
+    <div class="info-grid">
+      <div class="info-card">
+        <strong>🌓 Maré</strong>
+        <p id="mare"></p>
+      </div>
+      <div class="info-card">
+        <strong>🌊 Ondas</strong>
+        <p id="ondas"></p>
+      </div>
+      <div class="info-card">
+        <strong>🌡️ Água</strong>
+        <p id="tempAgua"></p>
+      </div>
+    </div>
+    
+    <div class="recomendacao" id="recomendacao"></div>
+    
+    <select id="spotSelect">
+      <option value="1">Costa da Caparica</option>
+      <option value="2">Ericeira</option>
+      <option value="3">Peniche</option>
+      <option value="4">Nazaré</option>
+      <option value="5">Sagres</option>
+      <option value="6">Sesimbra</option>
+      <option value="7">Aveiro</option>
+    </select>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

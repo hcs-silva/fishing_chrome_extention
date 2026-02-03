@@ -1,0 +1,86 @@
+body {
+  width: 360px;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #1a1a1a;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.badge.bom { background: #4ade80; color: white; }
+.badge.razoavel { background: #facc15; color: #000; }
+.badge.espera { background: #f87171; color: white; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.info-card {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.info-card strong {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.info-card p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.recomendacao {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.recomendacao.top { background: #dcfce7; color: #166534; border: 2px solid #4ade80; }
+.recomendacao.ok { background: #fef3c7; color: #92400e; border: 2px solid #facc15; }
+.recomendacao.cuidado { background: #fee2e2; color: #991b1b; border: 2px solid #f87171; }
+.recomendacao.espera { background: #f1f5f9; color: #475569; border: 2px solid #94a3b8; }
+
+select {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
