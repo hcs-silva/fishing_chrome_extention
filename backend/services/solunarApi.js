@@ -108,13 +108,13 @@ function calculateMoonPhase(date) {
  */
 function getMoonPhaseName(phase) {
   if (phase < 0.0625) return 'Lua Nova';
-  if (phase < 0.1875) return 'Quarto Crescente';
-  if (phase < 0.3125) return 'Crescente';
+  if (phase < 0.1875) return 'Crescente Inicial';
+  if (phase < 0.3125) return 'Quarto Crescente';
   if (phase < 0.4375) return 'Gibosa Crescente';
   if (phase < 0.5625) return 'Lua Cheia';
   if (phase < 0.6875) return 'Gibosa Minguante';
-  if (phase < 0.8125) return 'Minguante';
-  if (phase < 0.9375) return 'Quarto Minguante';
+  if (phase < 0.8125) return 'Quarto Minguante';
+  if (phase < 0.9375) return 'Minguante Final';
   return 'Lua Nova';
 }
 

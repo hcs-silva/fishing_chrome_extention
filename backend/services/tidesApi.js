@@ -85,8 +85,8 @@ function calculateTide(lat, lng, date = new Date()) {
  * Calculate time to next tide extreme (high or low)
  */
 function calculateTimeToExtreme(currentHour, period, phase, rising) {
-  // Find next extreme (0 or π in the cosine wave)
-  const target = rising ? Math.PI / 2 : 3 * Math.PI / 2;
+  // Find next extreme in cosine wave: max at 0/2π, min at π
+  const target = rising ? 0 : Math.PI;
   let phaseToTarget = target - (phase % (2 * Math.PI));
   
   if (phaseToTarget < 0) {

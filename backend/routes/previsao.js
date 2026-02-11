@@ -99,31 +99,41 @@ router.get('/', async (req, res) => {
  * Calculate fishing score based on multiple factors
  */
 function calculateFishingScore(tide, waves, wind, moonPhase, hour, dayOfWeek) {
+  // Thresholds for fishing conditions
+  const OPTIMAL_TIDE_MIN = 2.5;
+  const OPTIMAL_TIDE_MAX = 3.5;
+  const WAVE_CALM_THRESHOLD = 1.0;
+  const WAVE_MODERATE_THRESHOLD = 2.0;
+  const WAVE_ROUGH_THRESHOLD = 3.0;
+  const WIND_CALM_THRESHOLD = 10;
+  const WIND_LIGHT_THRESHOLD = 20;
+  const WIND_ROUGH_THRESHOLD = 30;
+  
   let score = 5; // Base score
 
   // Tide factors (best at tide changes)
   if (tide.state === 'Enchente' || tide.state === 'Vazante') {
     score += 2; // Moving tides are good
   }
-  if (tide.height > 2.5 && tide.height < 3.5) {
+  if (tide.height > OPTIMAL_TIDE_MIN && tide.height < OPTIMAL_TIDE_MAX) {
     score += 1; // Good tide height
   }
 
   // Wave conditions (smaller waves are better for fishing)
-  if (waves.height < 1.0) {
+  if (waves.height < WAVE_CALM_THRESHOLD) {
     score += 2; // Calm seas
-  } else if (waves.height < 2.0) {
+  } else if (waves.height < WAVE_MODERATE_THRESHOLD) {
     score += 1; // Moderate
-  } else if (waves.height > 3.0) {
+  } else if (waves.height > WAVE_ROUGH_THRESHOLD) {
     score -= 2; // Too rough
   }
 
   // Wind conditions (light wind is best)
-  if (wind.speed < 10) {
+  if (wind.speed < WIND_CALM_THRESHOLD) {
     score += 2; // Calm wind
-  } else if (wind.speed < 20) {
+  } else if (wind.speed < WIND_LIGHT_THRESHOLD) {
     score += 1; // Light wind
-  } else if (wind.speed > 30) {
+  } else if (wind.speed > WIND_ROUGH_THRESHOLD) {
     score -= 2; // Too windy
   }
 

@@ -60,7 +60,7 @@ function getFallbackWindData(lat, lng) {
   const speed = baseSpeed * timeOfDayFactor + Math.random() * 5;
   
   return {
-    speed: speed,
+    speed,
     direction: 280, // Typical NW wind for Portuguese coast
     gusts: speed * 1.4,
     timestamp: new Date().toISOString()
