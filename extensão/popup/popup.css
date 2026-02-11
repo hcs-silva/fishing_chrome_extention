@@ -65,6 +65,19 @@ h2 {
   font-weight: 500;
 }
 
+.solunar-section {
+  margin-bottom: 16px;
+}
+
+.solunar-card {
+  border-left: 4px solid #f59e0b;
+}
+
+.solunar-card p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .recomendacao {
   padding: 12px;
   border-radius: 8px;
