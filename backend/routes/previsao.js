@@ -6,10 +6,49 @@ const { getMarineWeather } = require('../services/marineWeatherApi');
 const { getWindData } = require('../services/windApi');
 const { getSolunarData, getMoonPhaseName } = require('../services/solunarApi');
 
-router.get('/', async (req, res) => {
+// Free spots (available to all users)
+const FREE_SPOT_IDS = [1, 2, 3]; // Costa da Caparica, Ericeira, Peniche
+
+// Optional authentication middleware - doesn't require auth but checks if present
+const optionalAuth = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (token) {
+      const jwt = require('jsonwebtoken');
+      const User = require('../models/User');
+      const JWT_SECRET = process.env.JWT_SECRET || 'fishing_secret_key_change_in_production';
+      
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const user = await User.findById(decoded.userId);
+      if (user) {
+        req.user = user;
+      }
+    }
+  } catch (error) {
+    // Silent fail - user will be treated as non-authenticated
+  }
+  next();
+};
+
+router.get('/', optionalAuth, async (req, res) => {
   const { spotId } = req.query;
   const spot = spots.find(s => s.id === parseInt(spotId));
   if (!spot) return res.status(404).json({ erro: 'Spot não encontrado' });
+
+  // Check if user has access to this spot
+  const isPremium = req.user && 
+                    req.user.plano === 'premium' && 
+                    (req.user.planoStatus === 'active' || req.user.planoStatus === 'trialing') &&
+                    (!req.user.planoExpiraEm || new Date() <= req.user.planoExpiraEm);
+
+  if (!isPremium && !FREE_SPOT_IDS.includes(spot.id)) {
+    return res.status(403).json({ 
+      erro: 'Este spot é exclusivo para usuários Premium',
+      plano: req.user ? req.user.plano : 'free',
+      spotId: spot.id,
+      upgradeUrl: '/api/subscription/create-checkout'
+    });
+  }
 
   try {
     // Fetch all data in parallel from free APIs
@@ -84,7 +123,8 @@ router.get('/', async (req, res) => {
       bomAgora: scorePeixe >= 7,
       recomendacao: scorePeixe >= 8 ? '🚀 Vai AGORA!' : 
                     scorePeixe >= 6 ? '👍 Razoável' : 
-                    scorePeixe >= 4 ? '⚠️ Cuidados' : '⏳ Espera melhor'
+                    scorePeixe >= 4 ? '⚠️ Cuidados' : '⏳ Espera melhor',
+      plano: isPremium ? 'premium' : 'free'
     });
   } catch (error) {
     console.error('Error fetching forecast data:', error);
