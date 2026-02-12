@@ -1,72 +1,24 @@
-const DEFAULT_API_URL =
-  "https://fishing-chrome-extention.onrender.com/api/previsao";
-let API_URL = DEFAULT_API_URL;
+function fetchPrevisao(spotId) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: "getPrevisao", spotId }, (response) => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) {
+        reject(new Error(lastError.message));
+        return;
+      }
 
-async function getStoredApiUrl() {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get(["apiUrl"], (res) => {
-        resolve(res && res.apiUrl ? res.apiUrl : DEFAULT_API_URL);
-      });
-    } catch (e) {
-      resolve(DEFAULT_API_URL);
-    }
+      if (!response || !response.ok) {
+        reject(new Error((response && response.error) || "Erro"));
+        return;
+      }
+
+      resolve(response.data);
+    });
   });
-}
-
-async function saveApiUrl(url) {
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ apiUrl: url }, () => resolve());
-  });
-}
-
-function toggleSettings(show) {
-  const panel = document.getElementById("settingsPanel");
-  panel.classList.toggle("hidden", !show);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   const spotSelect = document.getElementById("spotSelect");
-  const settingsBtn = document.getElementById("settingsBtn");
-  const saveApiBtn = document.getElementById("saveApiBtn");
-  const resetApiBtn = document.getElementById("resetApiBtn");
-  const apiUrlInput = document.getElementById("apiUrlInput");
-  const settingsMsg = document.getElementById("settingsMsg");
-  const currentApi = document.getElementById("currentApi");
-
-  // Inicializa API_URL a partir do storage
-  API_URL = await getStoredApiUrl();
-  apiUrlInput.value = API_URL;
-  currentApi.textContent = API_URL;
-
-  settingsBtn.addEventListener("click", () => {
-    const panel = document.getElementById("settingsPanel");
-    panel.classList.toggle("hidden");
-  });
-
-  saveApiBtn.addEventListener("click", async () => {
-    const val = apiUrlInput.value.trim();
-    if (!val) {
-      settingsMsg.textContent = "URL inválida";
-      return;
-    }
-    await saveApiUrl(val);
-    API_URL = val;
-    currentApi.textContent = API_URL;
-    settingsMsg.textContent = "Guardado ✅";
-    setTimeout(() => (settingsMsg.textContent = ""), 2000);
-    carregarDados(parseInt(document.getElementById("spotSelect").value));
-  });
-
-  resetApiBtn.addEventListener("click", async () => {
-    await saveApiUrl(DEFAULT_API_URL);
-    API_URL = DEFAULT_API_URL;
-    apiUrlInput.value = API_URL;
-    currentApi.textContent = API_URL;
-    settingsMsg.textContent = "Reposto para default ✅";
-    setTimeout(() => (settingsMsg.textContent = ""), 2000);
-    carregarDados(parseInt(document.getElementById("spotSelect").value));
-  });
 
   const atualizarBadge = (score) => {
     const badge = document.getElementById("scoreBadge");
@@ -91,27 +43,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       document.getElementById("spotNome").textContent = "A carregar...";
 
-      const res = await fetch(`${API_URL}?spotId=${spotId}`);
-      const data = await res.json();
+      const data = await fetchPrevisao(spotId);
 
       document.getElementById("spotNome").textContent = data.spot;
       document.getElementById("mare").textContent =
         `${data.mare.estado} (${data.mare.altura})`;
       document.getElementById("ondas").textContent =
         data.ondas.altura + " " + data.ondas.direcao;
-      
+
       // Display wind data
       if (data.vento) {
         document.getElementById("vento").textContent =
           `${data.vento.velocidade} ${data.vento.direcao}`;
+      } else {
+        document.getElementById("vento").textContent = "";
       }
-      
+
       document.getElementById("tempAgua").textContent = data.tempAgua;
 
       // Display solunar data
       if (data.solunar) {
         const solunarText = `☀️ ${data.solunar.nascerSol} - ${data.solunar.porSol}\n🌙 ${data.solunar.luaFase} (${data.solunar.luaFaseValor})`;
-        document.getElementById("solunar").innerHTML = solunarText.replace(/\n/g, '<br>');
+        document.getElementById("solunar").innerHTML = solunarText.replace(
+          /\n/g,
+          "<br>",
+        );
+      } else {
+        document.getElementById("solunar").textContent = "";
       }
 
       atualizarBadge(data.scorePeixe);
