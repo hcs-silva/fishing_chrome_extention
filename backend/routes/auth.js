@@ -52,7 +52,7 @@ router.post('/register', authLimiter, [
     );
 
     res.status(201).json({
-      mensagem: 'Usuário registrado com sucesso',
+      mensagem: 'Utilizador registrado com sucesso',
       user: {
         id: user._id,
         email: user.email,
@@ -62,7 +62,7 @@ router.post('/register', authLimiter, [
     });
   } catch (error) {
     console.error('Error registering user:', error);
-    res.status(500).json({ erro: 'Erro ao registrar usuário' });
+    res.status(500).json({ erro: 'Erro ao registrar utilizador' });
   }
 });
 
@@ -150,7 +150,7 @@ router.get('/me', apiLimiter, auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting user info:', error);
-    res.status(500).json({ erro: 'Erro ao obter informações do usuário' });
+    res.status(500).json({ erro: 'Erro ao obter informações do utilizador' });
   }
 });
 

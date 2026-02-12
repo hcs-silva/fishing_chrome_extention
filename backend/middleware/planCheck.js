@@ -9,7 +9,7 @@ const isPremium = (req, res, next) => {
   // Check if user has premium plan
   if (req.user.plano !== 'premium') {
     return res.status(403).json({ 
-      erro: 'Esta funcionalidade é exclusiva para usuários Premium',
+      erro: 'Esta funcionalidade é exclusiva para utilizadores Premium',
       plano: req.user.plano,
       upgradeUrl: '/api/subscription/create-checkout'
     });

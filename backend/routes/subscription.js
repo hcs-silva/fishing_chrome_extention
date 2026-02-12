@@ -177,6 +177,8 @@ router.post('/cancel', subscriptionLimiter, auth, async (req, res) => {
 /**
  * POST /api/subscription/webhook
  * Handle Stripe webhooks
+ * Note: No rate limiting - this endpoint is called by Stripe servers, not users
+ * Security is provided by webhook signature verification
  */
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   let event;
@@ -252,7 +254,10 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           const user = await User.findOne({ stripeSubscriptionId: subscriptionId });
           if (user) {
             user.planoStatus = 'active';
-            user.planoExpiraEm = new Date(invoice.lines.data[0].period.end * 1000);
+            // Update expiration date if available
+            if (invoice.lines?.data?.length > 0 && invoice.lines.data[0].period?.end) {
+              user.planoExpiraEm = new Date(invoice.lines.data[0].period.end * 1000);
+            }
             await user.save();
           }
         }

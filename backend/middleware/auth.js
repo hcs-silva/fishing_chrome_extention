@@ -21,7 +21,7 @@ const auth = async (req, res, next) => {
     const user = await User.findById(decoded.userId);
 
     if (!user) {
-      return res.status(401).json({ erro: 'Usuário não encontrado' });
+      return res.status(401).json({ erro: 'Utilizador não encontrado' });
     }
 
     req.user = user;

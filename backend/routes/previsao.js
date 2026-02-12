@@ -44,7 +44,7 @@ router.get('/', apiLimiter, optionalAuth, async (req, res) => {
 
   if (!isPremium && !FREE_SPOT_IDS.includes(spot.id)) {
     return res.status(403).json({ 
-      erro: 'Este spot é exclusivo para usuários Premium',
+      erro: 'Este spot é exclusivo para utilizadores Premium',
       plano: req.user ? req.user.plano : 'free',
       spotId: spot.id,
       upgradeUrl: '/api/subscription/create-checkout'
