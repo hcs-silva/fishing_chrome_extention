@@ -5,6 +5,7 @@ const { getTideData } = require('../services/tidesApi');
 const { getMarineWeather } = require('../services/marineWeatherApi');
 const { getWindData } = require('../services/windApi');
 const { getSolunarData, getMoonPhaseName } = require('../services/solunarApi');
+const { JWT_SECRET } = require('../config/config');
 
 // Free spots (available to all users)
 const FREE_SPOT_IDS = [1, 2, 3]; // Costa da Caparica, Ericeira, Peniche
@@ -13,10 +14,9 @@ const FREE_SPOT_IDS = [1, 2, 3]; // Costa da Caparica, Ericeira, Peniche
 const optionalAuth = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (token) {
+    if (token && JWT_SECRET) {
       const jwt = require('jsonwebtoken');
       const User = require('../models/User');
-      const JWT_SECRET = process.env.JWT_SECRET || 'fishing_secret_key_change_in_production';
       
       const decoded = jwt.verify(token, JWT_SECRET);
       const user = await User.findById(decoded.userId);

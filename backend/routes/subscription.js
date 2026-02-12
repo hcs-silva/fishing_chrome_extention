@@ -1,11 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { 
+  STRIPE_SECRET_KEY, 
+  STRIPE_WEBHOOK_SECRET, 
+  STRIPE_PRICE_MONTHLY,
+  STRIPE_PRICE_YEARLY,
+  FRONTEND_URL 
+} = require('../config/config');
 
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'chrome-extension://your-extension-id';
+// Initialize Stripe only if configured
+let stripe;
+if (STRIPE_SECRET_KEY) {
+  stripe = require('stripe')(STRIPE_SECRET_KEY);
+}
 
 /**
  * GET /api/subscription/status
@@ -56,9 +65,16 @@ router.post('/create-checkout', auth, async (req, res) => {
     const user = req.user;
 
     // Check if Stripe is configured
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (!stripe || !STRIPE_SECRET_KEY) {
       return res.status(500).json({ 
         erro: 'Stripe não está configurado. Contacte o suporte.' 
+      });
+    }
+
+    // Validate required configuration
+    if (!FRONTEND_URL) {
+      return res.status(500).json({ 
+        erro: 'Sistema não configurado corretamente. Contacte o suporte.' 
       });
     }
 
@@ -76,13 +92,22 @@ router.post('/create-checkout', auth, async (req, res) => {
       await user.save();
     }
 
-    // Default price IDs (should be set in environment variables)
-    const defaultPriceIds = {
-      monthly: process.env.STRIPE_PRICE_MONTHLY || 'price_monthly_default',
-      yearly: process.env.STRIPE_PRICE_YEARLY || 'price_yearly_default'
-    };
-
-    const finalPriceId = priceId || defaultPriceIds[planType] || defaultPriceIds.monthly;
+    // Determine price ID to use
+    let finalPriceId = priceId;
+    
+    if (!finalPriceId) {
+      // Use environment variable based on plan type
+      if (planType === 'yearly' && STRIPE_PRICE_YEARLY) {
+        finalPriceId = STRIPE_PRICE_YEARLY;
+      } else if (planType === 'monthly' && STRIPE_PRICE_MONTHLY) {
+        finalPriceId = STRIPE_PRICE_MONTHLY;
+      } else {
+        return res.status(500).json({ 
+          erro: 'Plano não configurado. Contacte o suporte.',
+          detalhes: `Plano ${planType} não disponível`
+        });
+      }
+    }
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
@@ -138,7 +163,7 @@ router.post('/cancel', auth, async (req, res) => {
       subscription: {
         id: subscription.id,
         status: subscription.status,
-        cancel_at: new Date(subscription.cancel_at * 1000),
+        cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000) : null,
         current_period_end: new Date(subscription.current_period_end * 1000)
       }
     });

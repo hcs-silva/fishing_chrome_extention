@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { JWT_SECRET } = require('../config/config');
 
 /**
  * Middleware to verify JWT token and attach user to request
@@ -12,7 +13,11 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ erro: 'Autenticação necessária' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fishing_secret_key_change_in_production');
+    if (!JWT_SECRET) {
+      return res.status(500).json({ erro: 'Servidor não configurado corretamente' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.userId);
 
     if (!user) {

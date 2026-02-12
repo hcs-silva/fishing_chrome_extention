@@ -78,6 +78,7 @@ router.post('/favorites', auth, isPremium, async (req, res) => {
 /**
  * DELETE /api/spots/favorites/:spotId
  * Remove a spot from favorites
+ * Note: Does not require premium plan - users can remove favorites even after downgrading
  */
 router.delete('/favorites/:spotId', auth, async (req, res) => {
   try {

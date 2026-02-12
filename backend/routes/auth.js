@@ -5,9 +5,7 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fishing_secret_key_change_in_production';
-const JWT_EXPIRES_IN = '7d';
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/config');
 
 /**
  * POST /api/auth/register
