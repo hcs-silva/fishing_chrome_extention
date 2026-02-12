@@ -23,10 +23,34 @@ app.use(
     },
   }),
 ); // Em produção ajuste ALLOWED_ORIGINS ou substitua por 'chrome-extension://<ID>'
-app.use(express.json());
+
+// Parse JSON for all routes except webhook
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/subscription/webhook') {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 
 app.use("/api/previsao", require("./routes/previsao"));
-// app.use('/api/auth', require('./routes/auth'));
-// app.use('/api/stripe', require('./routes/stripe'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/subscription', require('./routes/subscription'));
+app.use('/api/spots', require('./routes/spots'));
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Fishing Tides API',
+    version: '1.0.0',
+    endpoints: [
+      '/api/previsao',
+      '/api/auth',
+      '/api/subscription',
+      '/api/spots'
+    ]
+  });
+});
 
 module.exports = app;
