@@ -1,6 +1,6 @@
 # Fishing Tides PT — Aplicação
 
-**Descrição:** Pequena API (Node/Express) + extensão Chrome que mostra marés, ondas e um `scorePeixe` por spot em Portugal. O backend produz previsões simuladas (maré sinusoidal, ondas por spot) e a extensão exibe os dados no popup.
+**Descrição:** Pequena API (Node/Express) + extensão Chrome que mostra marés, ondas e um `scorePeixe` por spot em Portugal. O backend produz previsões simuladas (maré sinusoidal, ondas por spot) e a extensão exibe os dados no popup via service worker.
 
 ---
 
@@ -17,7 +17,7 @@
 - Endpoint GET `/api/previsao?spotId=<id>` devolve:
   - `spot`, `agora`, `mare`, `ondas`, `tempAgua`, `scorePeixe`, `bomAgora`, `recomendacao`.
 - Lógica de score baseada em: maré, hora do dia, ondas, dia da semana e base por spot.
-- Extensão com UI: seleção de spot, badge com score e painel de **Settings** para configurar `API URL` (armazenado em `chrome.storage`).
+- Extensão com UI: seleção de spot e badge com score; as chamadas a API passam pelo `background.js` para não expor o URL no frontend.
 
 ---
 
@@ -45,7 +45,9 @@
 1. Instalar dependências: `cd backend && npm install`
 2. Definir `MONGO_URI` em `.env` (opcional para funcionamento reduzido)
 3. Iniciar em modo dev: `npm run dev` (nodemon) ou `npm start`
-4. Abrir a extensão no Chrome (carregar unpacked) e definir `API URL` no Settings do popup se necessário.
+4. Abrir a extensão no Chrome (carregar unpacked). Se mudares o backend, ajusta o `API_URL` em `extensão/background.js` e recarrega a extensão.
+
+> Nota: em `chrome://extensions`, usa o link “Service worker” -> “Inspect views” para confirmar que o worker arrancou e ver logs.
 
 ---
 

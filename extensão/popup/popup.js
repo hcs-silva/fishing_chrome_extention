@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     elem.className = "recomendacao";
     if (recomendacao.includes("AGORA")) elem.classList.add("top");
     else if (recomendacao.includes("Razoável")) elem.classList.add("ok");
-    else if (recomendacao.includes("Cuidados")) elem.classList.add("cuidado");
+    else if (recomendacao.includes("Cuidado")) elem.classList.add("cuidado");
     else elem.classList.add("espera");
   };
 
