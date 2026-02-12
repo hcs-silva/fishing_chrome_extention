@@ -99,7 +99,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         `${data.mare.estado} (${data.mare.altura})`;
       document.getElementById("ondas").textContent =
         data.ondas.altura + " " + data.ondas.direcao;
+      
+      // Display wind data
+      if (data.vento) {
+        document.getElementById("vento").textContent =
+          `${data.vento.velocidade} ${data.vento.direcao}`;
+      }
+      
       document.getElementById("tempAgua").textContent = data.tempAgua;
+
+      // Display solunar data
+      if (data.solunar) {
+        const solunarText = `☀️ ${data.solunar.nascerSol} - ${data.solunar.porSol}\n🌙 ${data.solunar.luaFase} (${data.solunar.luaFaseValor})`;
+        document.getElementById("solunar").innerHTML = solunarText.replace(/\n/g, '<br>');
+      }
 
       atualizarBadge(data.scorePeixe);
       atualizarRecomendacao(data.recomendacao, data.bomAgora);
