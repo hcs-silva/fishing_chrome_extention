@@ -62,9 +62,27 @@ Seguir os passos em `README-deploy.md` para criar o serviço no Render e conecta
 
 ---
 
+## 💎 Plano de Monetização
+
+Este projeto inclui um **plano de monetização Freemium + Subscrição** detalhado:
+
+- 📄 **[MONETIZATION_PLAN.md](MONETIZATION_PLAN.md)** — Plano completo em português
+- 📄 **[MONETIZATION_PLAN_EN.md](MONETIZATION_PLAN_EN.md)** — Complete plan in English
+
+O plano inclui:
+- Estrutura de planos (FREE vs PREMIUM)
+- Estratégia de preços (€4.99/mês ou €49.99/ano)
+- Roadmap de implementação (8-12 semanas)
+- Integração com Stripe
+- Análise financeira e KPIs
+- Estratégias de conversão e marketing
+
+---
+
 ## 📌 Próximos passos / TODO
 
 - Implementar autenticação e rotas para favoritos de spots (User model já presente).
+- Implementar sistema de subscrições (ver MONETIZATION_PLAN.md).
 - Adicionar testes unitários para `scorePeixe`.
 - Opcional: `render.yaml` para deploy como infra-as-code.
 
