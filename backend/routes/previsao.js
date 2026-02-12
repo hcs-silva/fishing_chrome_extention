@@ -6,6 +6,7 @@ const { getMarineWeather } = require('../services/marineWeatherApi');
 const { getWindData } = require('../services/windApi');
 const { getSolunarData, getMoonPhaseName } = require('../services/solunarApi');
 const { JWT_SECRET } = require('../config/config');
+const { apiLimiter } = require('../middleware/rateLimiter');
 
 // Free spots (available to all users)
 const FREE_SPOT_IDS = [1, 2, 3]; // Costa da Caparica, Ericeira, Peniche
@@ -30,7 +31,7 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/', apiLimiter, optionalAuth, async (req, res) => {
   const { spotId } = req.query;
   const spot = spots.find(s => s.id === parseInt(spotId));
   if (!spot) return res.status(404).json({ erro: 'Spot não encontrado' });

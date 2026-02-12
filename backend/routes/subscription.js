@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { subscriptionLimiter } = require('../middleware/rateLimiter');
 const { 
   STRIPE_SECRET_KEY, 
   STRIPE_WEBHOOK_SECRET, 
@@ -20,7 +21,7 @@ if (STRIPE_SECRET_KEY) {
  * GET /api/subscription/status
  * Get current subscription status
  */
-router.get('/status', auth, async (req, res) => {
+router.get('/status', subscriptionLimiter, auth, async (req, res) => {
   try {
     const user = req.user;
     
@@ -59,7 +60,7 @@ router.get('/status', auth, async (req, res) => {
  * POST /api/subscription/create-checkout
  * Create Stripe checkout session for premium subscription
  */
-router.post('/create-checkout', auth, async (req, res) => {
+router.post('/create-checkout', subscriptionLimiter, auth, async (req, res) => {
   try {
     const { priceId, planType = 'monthly' } = req.body;
     const user = req.user;
@@ -144,7 +145,7 @@ router.post('/create-checkout', auth, async (req, res) => {
  * POST /api/subscription/cancel
  * Cancel subscription
  */
-router.post('/cancel', auth, async (req, res) => {
+router.post('/cancel', subscriptionLimiter, auth, async (req, res) => {
   try {
     const user = req.user;
 

@@ -6,12 +6,13 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/config');
+const { authLimiter, apiLimiter } = require('../middleware/rateLimiter');
 
 /**
  * POST /api/auth/register
  * Register a new user
  */
-router.post('/register', [
+router.post('/register', authLimiter, [
   body('email').isEmail().withMessage('Email inválido'),
   body('password').isLength({ min: 6 }).withMessage('Password deve ter no mínimo 6 caracteres')
 ], async (req, res) => {
@@ -69,7 +70,7 @@ router.post('/register', [
  * POST /api/auth/login
  * Login user
  */
-router.post('/login', [
+router.post('/login', authLimiter, [
   body('email').isEmail().withMessage('Email inválido'),
   body('password').exists().withMessage('Password é obrigatório')
 ], async (req, res) => {
@@ -122,7 +123,7 @@ router.post('/login', [
  * POST /api/auth/logout
  * Logout user (client should delete token)
  */
-router.post('/logout', auth, (req, res) => {
+router.post('/logout', apiLimiter, auth, (req, res) => {
   // In a stateless JWT system, logout is handled client-side by deleting the token
   // This endpoint exists for consistency and can be extended with token blacklisting if needed
   res.json({ mensagem: 'Logout bem-sucedido' });
@@ -132,7 +133,7 @@ router.post('/logout', auth, (req, res) => {
  * GET /api/auth/me
  * Get current user info
  */
-router.get('/me', auth, async (req, res) => {
+router.get('/me', apiLimiter, auth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
     res.json({

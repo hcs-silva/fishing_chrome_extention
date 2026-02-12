@@ -3,13 +3,14 @@ const router = express.Router();
 const spots = require('../utils/spots');
 const auth = require('../middleware/auth');
 const { isPremium } = require('../middleware/planCheck');
+const { apiLimiter } = require('../middleware/rateLimiter');
 const User = require('../models/User');
 
 /**
  * GET /api/spots/all
  * Get all fishing spots (Premium only)
  */
-router.get('/all', auth, isPremium, (req, res) => {
+router.get('/all', apiLimiter, auth, isPremium, (req, res) => {
   res.json({
     spots: spots,
     total: spots.length
@@ -20,7 +21,7 @@ router.get('/all', auth, isPremium, (req, res) => {
  * GET /api/spots/favorites
  * Get user's favorite spots
  */
-router.get('/favorites', auth, async (req, res) => {
+router.get('/favorites', apiLimiter, auth, async (req, res) => {
   try {
     const user = req.user;
     const favoriteSpots = spots.filter(spot => 
@@ -41,7 +42,7 @@ router.get('/favorites', auth, async (req, res) => {
  * POST /api/spots/favorites
  * Add a spot to favorites (Premium only)
  */
-router.post('/favorites', auth, isPremium, async (req, res) => {
+router.post('/favorites', apiLimiter, auth, isPremium, async (req, res) => {
   try {
     const { spotId } = req.body;
     const user = req.user;
@@ -80,7 +81,7 @@ router.post('/favorites', auth, isPremium, async (req, res) => {
  * Remove a spot from favorites
  * Note: Does not require premium plan - users can remove favorites even after downgrading
  */
-router.delete('/favorites/:spotId', auth, async (req, res) => {
+router.delete('/favorites/:spotId', apiLimiter, auth, async (req, res) => {
   try {
     const { spotId } = req.params;
     const user = req.user;
