@@ -70,6 +70,63 @@ router.get("/status", subscriptionLimiter, auth, async (req, res) => {
 });
 
 /**
+ * GET /api/subscription/plans
+ * Get available subscription plans with pricing information
+ */
+router.get("/plans", subscriptionLimiter, async (req, res) => {
+  try {
+    if (!ensureStripeConfigured(res)) {
+      return;
+    }
+
+    const plans = [];
+
+    // Fetch monthly plan details
+    if (STRIPE_PRICE_MONTHLY) {
+      try {
+        const monthlyPrice = await stripe.prices.retrieve(STRIPE_PRICE_MONTHLY);
+        plans.push({
+          type: "monthly",
+          priceId: STRIPE_PRICE_MONTHLY,
+          amount: monthlyPrice.unit_amount / 100, // Convert from cents
+          currency: monthlyPrice.currency.toUpperCase(),
+          interval: monthlyPrice.recurring?.interval || "month",
+        });
+      } catch (error) {
+        console.error("Error fetching monthly price:", error);
+      }
+    }
+
+    // Fetch yearly plan details
+    if (STRIPE_PRICE_YEARLY) {
+      try {
+        const yearlyPrice = await stripe.prices.retrieve(STRIPE_PRICE_YEARLY);
+        plans.push({
+          type: "yearly",
+          priceId: STRIPE_PRICE_YEARLY,
+          amount: yearlyPrice.unit_amount / 100, // Convert from cents
+          currency: yearlyPrice.currency.toUpperCase(),
+          interval: yearlyPrice.recurring?.interval || "year",
+        });
+      } catch (error) {
+        console.error("Error fetching yearly price:", error);
+      }
+    }
+
+    if (plans.length === 0) {
+      return res.status(500).json({
+        erro: "Nenhum plano configurado. Contacte o suporte.",
+      });
+    }
+
+    res.json({ plans });
+  } catch (error) {
+    console.error("Error getting subscription plans:", error);
+    res.status(500).json({ erro: "Erro ao obter planos de subscrição" });
+  }
+});
+
+/**
  * POST /api/subscription/create-checkout
  * Create Stripe checkout session for premium subscription
  */
