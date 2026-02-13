@@ -47,7 +47,60 @@
         <option value="5">Sagres</option>
         <option value="6">Sesimbra</option>
         <option value="7">Aveiro</option>
-      </select>      
+      </select>
+
+      <div class="billing-section">
+        
+        <div class="billing-actions" id="authChoice">
+          <button id="registerBtn" class="btn" type="button">
+            Criar conta FREE
+          </button>
+          <button id="loginBtn" class="btn secondary" type="button">
+            Entrar
+          </button>
+        </div>
+
+        <div id="authForm" class="hidden">
+          <input
+            id="authEmail"
+            type="email"
+            placeholder="Email"
+            autocomplete="email"
+          />
+          <input
+            id="authPassword"
+            type="password"
+            placeholder="Password (mín. 6 caracteres)"
+            autocomplete="current-password"
+          />
+          <div class="billing-actions">
+            <button id="authSubmitBtn" class="btn" type="button">
+              Continuar
+            </button>
+            <button id="cancelAuthBtn" class="btn secondary" type="button">
+              Cancelar
+            </button>
+          </div>
+        </div>
+
+        <div id="billingActionsPanel" class="hidden">
+          <div class="billing-actions">
+            <button id="statusBtn" class="btn" type="button">Ver estado</button>
+            <button id="checkoutBtn" class="btn" type="button">
+              Upgrade mensal
+            </button>
+          </div>
+          <div class="billing-actions">
+            <button id="portalBtn" class="btn secondary" type="button">
+              Gerir plano
+            </button>
+            <button id="logoutBtn" class="btn danger" type="button">
+              Sair
+            </button>
+          </div>
+        </div>
+        <p id="billingMessage" class="billing-message"></p>
+      </div>
     </div>
     <script src="popup.js"></script>
   </body>

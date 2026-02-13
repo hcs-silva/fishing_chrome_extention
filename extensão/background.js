@@ -3,30 +3,169 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log("Extensão instalada");
 });
 
-const API_URL = "https://fishing-chrome-extention.onrender.com/api/previsao";
+const API_BASE_URLS = [
+  "http://localhost:5005/api",
+  "https://fishing-chrome-extention.onrender.com/api",
+];
+const REQUEST_TIMEOUT_MS = 15000;
+
+async function requestWithBaseUrl(baseUrl, path, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error && error.name === "AbortError") {
+      throw new Error("Timeout na ligação à API");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (error) {
+    data = { message: text || "Resposta inválida da API" };
+  }
+
+  if (!response.ok) {
+    const message =
+      (data && (data.erro || data.error || data.message)) ||
+      `HTTP ${response.status}`;
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+async function apiRequest(path, options = {}) {
+  let lastError = null;
+
+  for (const baseUrl of API_BASE_URLS) {
+    try {
+      return await requestWithBaseUrl(baseUrl, path, options);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(lastError?.message || "API indisponível");
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || message.type !== "getPrevisao") {
+  if (!message || !message.type) {
     return;
   }
 
-  const spotId = message.spotId;
-  const url = `${API_URL}?spotId=${encodeURIComponent(spotId)}`;
-
-  fetch(url)
-    .then((res) => {
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      return res.json();
+  if (message.type === "getPrevisao") {
+    const spotId = message.spotId;
+    apiRequest(`/previsao?spotId=${encodeURIComponent(spotId)}`, {
+      method: "GET",
     })
-    .then((data) => sendResponse({ ok: true, data }))
-    .catch((err) =>
-      sendResponse({
-        ok: false,
-        error: err && err.message ? err.message : "Erro",
-      }),
-    );
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({
+          ok: false,
+          error: err && err.message ? err.message : "Erro",
+        }),
+      );
 
-  return true;
+    return true;
+  }
+
+  if (message.type === "subscriptionStatus") {
+    apiRequest("/subscription/status", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${message.token}`,
+      },
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
+  if (message.type === "registerAccount") {
+    apiRequest("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email: message.email,
+        password: message.password,
+      }),
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
+  if (message.type === "loginAccount") {
+    apiRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: message.email,
+        password: message.password,
+      }),
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
+  if (message.type === "createCheckout") {
+    apiRequest("/subscription/create-checkout", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${message.token}`,
+      },
+      body: JSON.stringify({
+        planType: message.planType || "monthly",
+      }),
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
+  if (message.type === "createPortal") {
+    apiRequest("/subscription/create-portal", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${message.token}`,
+      },
+      body: JSON.stringify({}),
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
+  sendResponse({ ok: false, error: "Tipo de mensagem não suportado" });
+  return false;
 });

@@ -50,7 +50,7 @@ router.post('/register', authLimiter, [
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
-
+      console.log('User registered:', user.email);
     res.status(201).json({
       mensagem: 'Utilizador registrado com sucesso',
       user: {
