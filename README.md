@@ -1,95 +1,107 @@
-# Fishing Tides PT — Aplicação
+# Fishing Tides PT
 
-**Descrição:** Pequena API (Node/Express) + extensão Chrome que mostra marés, ondas e um `scorePeixe` por spot em Portugal. O backend produz previsões simuladas (maré sinusoidal, ondas por spot) e a extensão exibe os dados no popup via service worker.
+Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para previsão de pesca em Portugal com modelo Freemium e subscrição Stripe.
 
----
+## Funcionalidades atuais
 
-## 📁 Estrutura do repositório
+### Previsão de pesca
 
-- `backend/` — API Express, conexão MongoDB, utilitários (`scorePeixe`, `spots`) e modelo `User`.
-- `extensão/` — código da Chrome Extension (MV3): `popup/` (HTML/CSS/JS) e `background.js`.
-- `README-deploy.md` — guia de deploy no Render.
+- Consulta por spot com maré, ondas, vento, temperatura da água e dados solunares.
+- Cálculo de `scorePeixe` e recomendação no popup da extensão.
+- Seleção rápida de spots portugueses no popup.
 
----
+### Autenticação (FREE)
 
-## ⚙️ Funcionalidades principais
+- Registo de conta FREE (`/api/auth/register`).
+- Login (`/api/auth/login`).
+- JWT guardado internamente em `chrome.storage.local`.
+- O token **não é exposto no frontend**.
 
-- Endpoint GET `/api/previsao?spotId=<id>` devolve:
-  - `spot`, `agora`, `mare`, `ondas`, `tempAgua`, `scorePeixe`, `bomAgora`, `recomendacao`.
-- Lógica de score baseada em: maré, hora do dia, ondas, dia da semana e base por spot.
-- Extensão com UI: seleção de spot e badge com score; as chamadas a API passam pelo `background.js` para não expor o URL no frontend.
+### Subscrição Stripe (PREMIUM)
 
----
+- Criação de checkout de subscrição (`/api/subscription/create-checkout`).
+- Consulta de estado de plano (`/api/subscription/status`).
+- Acesso ao Stripe Billing Portal (`/api/subscription/create-portal`).
+- Cancelamento de subscrição (`/api/subscription/cancel`).
+- Atualização automática do plano via webhook Stripe (`/api/subscription/webhook`).
 
-## 🔌 Endpoints
+### UX atual da extensão
 
-- GET `/api/previsao?spotId=1` — exemplo: `curl https://fishing-chrome-extention.onrender.com/api/previsao?spotId=1`
+- No estado inicial, mostra apenas os botões **Criar conta FREE** e **Entrar**.
+- O formulário de email/password só aparece após o utilizador escolher um dos fluxos.
+- Após autenticação, mostra ações de subscrição (estado, upgrade, gerir plano, sair).
 
-(O backend só expõe rotas sob `/api` — a raiz `/` não tem UI.)
+## Arquitetura
 
----
+- `backend/` API Express, MongoDB, autenticação JWT, rotas de subscrição Stripe.
+- `extensão/` popup UI + service worker (`background.js`) para chamadas seguras à API.
 
-## 🧩 Variáveis de ambiente (backend)
+## API principal
 
-- `MONGO_URI` — connection string do MongoDB Atlas
-- `NODE_ENV` — `production` ou `development`
-- `ALLOWED_ORIGINS` — lista separada por vírgulas das origens permitidas para CORS (ex.: `https://fishing-chrome-extention.onrender.com,chrome-extension://<ID>`)
-- `JWT_SECRET` — se implementares auth
+### Previsão
 
-> Nota: `PORT` é fornecida pelo Render em produção. O `server.js` usa `process.env.PORT || 3000`.
+- `GET /api/previsao?spotId=<id>`
 
----
+### Auth
 
-## ▶️ Executar localmente
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
 
-1. Instalar dependências: `cd backend && npm install`
-2. Definir `MONGO_URI` em `.env` (opcional para funcionamento reduzido)
-3. Iniciar em modo dev: `npm run dev` (nodemon) ou `npm start`
-4. Abrir a extensão no Chrome (carregar unpacked). Se mudares o backend, ajusta o `API_URL` em `extensão/background.js` e recarrega a extensão.
+### Subscrição
 
-> Nota: em `chrome://extensions`, usa o link “Service worker” -> “Inspect views” para confirmar que o worker arrancou e ver logs.
+- `GET /api/subscription/status`
+- `POST /api/subscription/create-checkout`
+- `GET /api/subscription/checkout-session/:sessionId`
+- `POST /api/subscription/create-portal`
+- `POST /api/subscription/cancel`
+- `POST /api/subscription/webhook`
 
----
+## Variáveis de ambiente (backend)
 
-## 🚀 Deploy
+- `MONGO_URI` (opcional; sem isto usa `mongodb://127.0.0.1:27017/fishing-chrome-extension`)
+- `PORT` (default `5005`)
+- `NODE_ENV`
+- `ALLOWED_ORIGINS`
+- `JWT_SECRET`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_MONTHLY`
+- `STRIPE_PRICE_YEARLY`
+- `FRONTEND_URL`
 
-Seguir os passos em `README-deploy.md` para criar o serviço no Render e conectar o MongoDB Atlas. Após o deploy, atualizar `extensão/manifest.json` `host_permissions` e recarregar a extensão.
+## Executar localmente
 
----
+1. Iniciar MongoDB local (ou configurar `MONGO_URI` para Atlas).
+2. No backend:
+   - `cd backend`
+   - `pnpm install`
+   - `pnpm dev`
+3. Carregar extensão em `chrome://extensions` (Load unpacked em `extensão/`).
+4. Recarregar a extensão após alterações no `background.js`.
 
-## 🔒 Segurança / CORS
+## Como a extensão escolhe a API
 
-- Em produção define `ALLOWED_ORIGINS` estritamente (não usar `*`).
-- Mantém segredos (Mongo URI, JWT secret) fora do repositório.
+O service worker tenta nesta ordem:
 
----
+1. `http://localhost:5005/api`
+2. `https://fishing-chrome-extention.onrender.com/api`
 
-## 💎 Plano de Monetização
+Isto permite desenvolvimento local com fallback para produção.
 
-Este projeto inclui um **plano de monetização Freemium + Subscrição** detalhado:
+## Teste de fluxo completo (FREE -> PREMIUM)
 
-- 📄 **[MONETIZATION_PLAN.md](MONETIZATION_PLAN.md)** — Plano completo em português
-- 📄 **[MONETIZATION_PLAN_EN.md](MONETIZATION_PLAN_EN.md)** — Complete plan in English
+1. Abrir popup e clicar **Criar conta FREE**.
+2. Submeter email/password e confirmar login automático.
+3. Clicar **Upgrade mensal** para abrir Stripe Checkout.
+4. Concluir pagamento em modo teste Stripe.
+5. Confirmar webhook recebido no backend.
+6. Voltar ao popup e clicar **Ver estado** para validar plano PREMIUM.
 
-O plano inclui:
-- Estrutura de planos (FREE vs PREMIUM)
-- Estratégia de preços (€4.99/mês ou €49.99/ano)
-- Roadmap de implementação (8-12 semanas)
-- Integração com Stripe
-- Análise financeira e KPIs
-- Estratégias de conversão e marketing
+## Documentação adicional
 
----
-
-## 📌 Próximos passos / TODO
-
-- Implementar autenticação e rotas para favoritos de spots (User model já presente).
-- Implementar sistema de subscrições (ver MONETIZATION_PLAN.md).
-- Adicionar testes unitários para `scorePeixe`.
-- Opcional: `render.yaml` para deploy como infra-as-code.
-
----
-
-## Contacto
-
-- Se quiseres, posso gerar o `render.yaml` de exemplo ou abrir um PR com pequenas melhorias (logs CORS, rota `/` de health).
+- [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+- [BACKEND_MONETIZATION_API.md](BACKEND_MONETIZATION_API.md)
+- [MONETIZATION_PLAN.md](MONETIZATION_PLAN.md)
+- [MONETIZATION_PLAN_EN.md](MONETIZATION_PLAN_EN.md)

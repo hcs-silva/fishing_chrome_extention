@@ -33,6 +33,13 @@ async function requestWithBaseUrl(baseUrl, path, options = {}) {
   }
 
   const text = await response.text();
+  const suspendedServiceMessage =
+    "This service has been suspended by its owner.";
+
+  if (text && text.includes(suspendedServiceMessage)) {
+    throw new Error(`Serviço remoto suspenso (${baseUrl})`);
+  }
+
   let data = null;
   try {
     data = text ? JSON.parse(text) : null;
@@ -51,17 +58,30 @@ async function requestWithBaseUrl(baseUrl, path, options = {}) {
 }
 
 async function apiRequest(path, options = {}) {
-  let lastError = null;
+  const errors = [];
 
   for (const baseUrl of API_BASE_URLS) {
     try {
       return await requestWithBaseUrl(baseUrl, path, options);
     } catch (error) {
-      lastError = error;
+      errors.push({ baseUrl, message: error?.message || "Erro desconhecido" });
     }
   }
 
-  throw new Error(lastError?.message || "API indisponível");
+  const localError = errors.find((entry) =>
+    entry.baseUrl.includes("localhost"),
+  );
+  const suspendedError = errors.find((entry) =>
+    entry.message.includes("suspenso"),
+  );
+
+  if (localError && suspendedError) {
+    throw new Error(
+      `Backend local indisponível (${localError.message}). O fallback remoto está suspenso.`,
+    );
+  }
+
+  throw new Error(errors[0]?.message || "API indisponível");
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
