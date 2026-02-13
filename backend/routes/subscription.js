@@ -85,13 +85,20 @@ router.get("/plans", subscriptionLimiter, async (req, res) => {
     if (STRIPE_PRICE_MONTHLY) {
       try {
         const monthlyPrice = await stripe.prices.retrieve(STRIPE_PRICE_MONTHLY);
-        plans.push({
-          type: "monthly",
-          priceId: STRIPE_PRICE_MONTHLY,
-          amount: monthlyPrice.unit_amount / 100, // Convert from cents
-          currency: monthlyPrice.currency.toUpperCase(),
-          interval: monthlyPrice.recurring?.interval || "month",
-        });
+        if (!monthlyPrice.recurring) {
+          console.error(
+            "Monthly price is not a recurring subscription:",
+            STRIPE_PRICE_MONTHLY,
+          );
+        } else {
+          plans.push({
+            type: "monthly",
+            priceId: STRIPE_PRICE_MONTHLY,
+            amount: monthlyPrice.unit_amount / 100, // Convert from cents
+            currency: monthlyPrice.currency.toUpperCase(),
+            interval: monthlyPrice.recurring.interval,
+          });
+        }
       } catch (error) {
         console.error("Error fetching monthly price:", error);
       }
@@ -101,13 +108,20 @@ router.get("/plans", subscriptionLimiter, async (req, res) => {
     if (STRIPE_PRICE_YEARLY) {
       try {
         const yearlyPrice = await stripe.prices.retrieve(STRIPE_PRICE_YEARLY);
-        plans.push({
-          type: "yearly",
-          priceId: STRIPE_PRICE_YEARLY,
-          amount: yearlyPrice.unit_amount / 100, // Convert from cents
-          currency: yearlyPrice.currency.toUpperCase(),
-          interval: yearlyPrice.recurring?.interval || "year",
-        });
+        if (!yearlyPrice.recurring) {
+          console.error(
+            "Yearly price is not a recurring subscription:",
+            STRIPE_PRICE_YEARLY,
+          );
+        } else {
+          plans.push({
+            type: "yearly",
+            priceId: STRIPE_PRICE_YEARLY,
+            amount: yearlyPrice.unit_amount / 100, // Convert from cents
+            currency: yearlyPrice.currency.toUpperCase(),
+            interval: yearlyPrice.recurring.interval,
+          });
+        }
       } catch (error) {
         console.error("Error fetching yearly price:", error);
       }
