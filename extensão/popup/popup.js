@@ -60,6 +60,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const portalBtn = document.getElementById("portalBtn");
   const logoutBtn = document.getElementById("logoutBtn");
   const billingMessage = document.getElementById("billingMessage");
+  const feedbackToggle = document.getElementById("feedbackToggle");
+  const feedbackForm = document.getElementById("feedbackForm");
+  const feedbackText = document.getElementById("feedbackText");
+  const sendFeedbackBtn = document.getElementById("sendFeedbackBtn");
   let authMode = null;
 
   const setBillingMessage = (message, isError = false) => {
@@ -346,5 +350,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (error) {
       setBillingMessage(error.message || "Erro ao terminar sessão", true);
     }
+  });
+
+  // Feedback form toggle
+  feedbackToggle.addEventListener("click", () => {
+    feedbackForm.classList.toggle("hidden");
+  });
+
+  // Send feedback
+  sendFeedbackBtn.addEventListener("click", () => {
+    const feedback = feedbackText.value.trim();
+    if (!feedback) {
+      alert("Por favor, escreve o teu feedback antes de enviar.");
+      return;
+    }
+
+    const subject = encodeURIComponent("Feedback - Fishing Tides PT");
+    const body = encodeURIComponent(feedback);
+    const mailtoLink = `mailto:hcs.silva.dev@gmail.com?subject=${subject}&body=${body}`;
+
+    chrome.tabs.create({ url: mailtoLink });
+    feedbackText.value = "";
+    feedbackForm.classList.add("hidden");
   });
 });
