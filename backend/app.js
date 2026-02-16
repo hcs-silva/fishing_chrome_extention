@@ -11,9 +11,18 @@ connectDB();
 
 const isDevelopment = (process.env.NODE_ENV || "development") !== "production";
 
-// Security middleware
+// Security middleware with Stripe-compatible CSP
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for Stripe integration
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://js.stripe.com"],
+      frameSrc: ["'self'", "https://js.stripe.com", "https://checkout.stripe.com", "https://billing.stripe.com"],
+      connectSrc: ["'self'", "https://api.stripe.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Required for inline styles
+    },
+  },
   crossOriginEmbedderPolicy: false, // Disabled for extension compatibility
 }));
 
