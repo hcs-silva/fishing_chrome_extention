@@ -1,4 +1,5 @@
 *.md
 !README.md
 !SECURITY.md
+!SECURITY_SUMMARY.md
 
