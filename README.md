@@ -22,6 +22,8 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 - Criação de checkout de subscrição (`/api/subscription/create-checkout`).
 - Consulta de estado de plano (`/api/subscription/status`).
 - Acesso ao Stripe Billing Portal (`/api/subscription/create-portal`).
+- Sincronização imediata pós-checkout (`/api/subscription/finalize-checkout`).
+- Página de retorno hospedada para voltar à extensão (`/api/subscription/return`).
 - Cancelamento de subscrição (`/api/subscription/cancel`).
 - Atualização automática do plano via webhook Stripe (`/api/subscription/webhook`).
 
@@ -54,7 +56,9 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 - `GET /api/subscription/status`
 - `POST /api/subscription/create-checkout`
 - `GET /api/subscription/checkout-session/:sessionId`
+- `POST /api/subscription/finalize-checkout`
 - `POST /api/subscription/create-portal`
+- `GET /api/subscription/return`
 - `POST /api/subscription/cancel`
 - `POST /api/subscription/webhook`
 
@@ -70,6 +74,8 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 - `STRIPE_PRICE_MONTHLY`
 - `STRIPE_PRICE_YEARLY`
 - `FRONTEND_URL`
+
+> ⚠️ Importante: em `STRIPE_WEBHOOK_SECRET`, não deixes espaços antes/depois do valor (ex.: `STRIPE_WEBHOOK_SECRET=whsec_xxx`).
 
 ## Executar localmente
 
@@ -96,8 +102,17 @@ Isto permite desenvolvimento local com fallback para produção.
 2. Submeter email/password e confirmar login automático.
 3. Clicar **Upgrade mensal** para abrir Stripe Checkout.
 4. Concluir pagamento em modo teste Stripe.
-5. Confirmar webhook recebido no backend.
-6. Voltar ao popup e clicar **Ver estado** para validar plano PREMIUM.
+5. Após pagamento, o Stripe redireciona para `/api/subscription/return`, que volta à extensão.
+6. A extensão sincroniza o plano via `finalize-checkout` (não depende apenas do webhook).
+7. Clicar **Ver estado** para validar plano PREMIUM.
+
+## Troubleshooting rápido (plano continua FREE)
+
+- Confirmar que o checkout foi concluído e voltou com `billingStatus=success` e `session_id`.
+- Verificar `STRIPE_WEBHOOK_SECRET` sem espaços e com valor correto de teste (`whsec_...`).
+- Recarregar a extensão após alterações de `manifest.json`, `background.js` ou `popup.js`.
+- Validar `ALLOWED_ORIGINS` com o `chrome-extension://<ID>` correto.
+- No backend, confirmar logs de `finalize-checkout` e `/webhook`.
 
 ## Documentação adicional
 
