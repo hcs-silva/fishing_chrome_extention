@@ -22,6 +22,20 @@
     "http://localhost:5005/*",
     "https://fishing-chrome-extention.onrender.com/*"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "popup/popup.html",
+        "popup/popup.css",
+        "popup/popup.js",
+        "icons/*"
+      ],
+      "matches": [
+        "https://checkout.stripe.com/*",
+        "https://billing.stripe.com/*"
+      ]
+    }
+  ],
   "background": {
     "service_worker": "background.js"
   }

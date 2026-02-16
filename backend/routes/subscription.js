@@ -17,6 +17,41 @@ if (STRIPE_SECRET_KEY) {
   stripe = require("stripe")(STRIPE_SECRET_KEY);
 }
 
+const EXTENSION_POPUP_PATH = "/popup/popup.html";
+
+const getExtensionOriginFromRequest = (req) => {
+  const originHeader = req.get("origin");
+  if (originHeader && originHeader.startsWith("chrome-extension://")) {
+    return originHeader.replace(/\/+$/, "");
+  }
+  return null;
+};
+
+const buildStripeReturnUrls = (req) => {
+  const extensionOrigin = getExtensionOriginFromRequest(req);
+  const baseReturnUrl = extensionOrigin
+    ? `${extensionOrigin}${EXTENSION_POPUP_PATH}`
+    : FRONTEND_URL;
+
+  if (!baseReturnUrl) {
+    return null;
+  }
+
+  const normalizedBase = baseReturnUrl.replace(/\/+$/, "");
+  const successUrl = new URL(normalizedBase);
+  successUrl.searchParams.set("billingStatus", "success");
+  successUrl.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
+
+  const cancelUrl = new URL(normalizedBase);
+  cancelUrl.searchParams.set("billingStatus", "cancel");
+
+  return {
+    successUrl: successUrl.toString(),
+    cancelUrl: cancelUrl.toString(),
+    returnUrl: new URL(normalizedBase).toString(),
+  };
+};
+
 const ensureStripeConfigured = (res) => {
   if (!stripe || !STRIPE_SECRET_KEY) {
     res.status(500).json({
@@ -153,8 +188,8 @@ router.post("/create-checkout", subscriptionLimiter, auth, async (req, res) => {
       return;
     }
 
-    // Validate required configuration
-    if (!FRONTEND_URL) {
+    const returnUrls = buildStripeReturnUrls(req);
+    if (!returnUrls) {
       return res.status(500).json({
         erro: "Sistema não configurado corretamente. Contacte o suporte.",
       });
@@ -213,8 +248,8 @@ router.post("/create-checkout", subscriptionLimiter, auth, async (req, res) => {
         },
       ],
       mode: "subscription",
-      success_url: `${FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${FRONTEND_URL}/cancel`,
+      success_url: returnUrls.successUrl,
+      cancel_url: returnUrls.cancelUrl,
       metadata: {
         userId: user._id.toString(),
       },
@@ -286,7 +321,8 @@ router.post("/create-portal", subscriptionLimiter, auth, async (req, res) => {
       return res.status(400).json({ erro: "Cliente Stripe não encontrado" });
     }
 
-    if (!FRONTEND_URL) {
+    const returnUrls = buildStripeReturnUrls(req);
+    if (!returnUrls) {
       return res.status(500).json({
         erro: "Sistema não configurado corretamente. Contacte o suporte.",
       });
@@ -294,7 +330,7 @@ router.post("/create-portal", subscriptionLimiter, auth, async (req, res) => {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: FRONTEND_URL,
+      return_url: returnUrls.returnUrl,
     });
 
     res.json({ url: portalSession.url });

@@ -173,6 +173,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
+  const handleBillingRedirect = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const billingStatus = params.get("billingStatus");
+
+    if (!billingStatus) {
+      return;
+    }
+
+    if (billingStatus === "success") {
+      setBillingMessage(
+        "Pagamento concluído. O plano PREMIUM será ativado em instantes; clica 'Ver estado'.",
+      );
+    } else if (billingStatus === "cancel") {
+      setBillingMessage(
+        "Checkout cancelado. Podes tentar novamente quando quiseres.",
+      );
+    }
+
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
   const toggleUpgradeMenu = async () => {
     const isHidden = upgradeMenu.classList.contains("hidden");
 
@@ -301,6 +322,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     showUnauthenticatedState();
   }
 
+  await handleBillingRedirect();
+
   // Muda spot
   spotSelect.addEventListener("change", (e) => {
     carregarDados(e.target.value);
@@ -403,10 +426,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
-    if (
-      !upgradeBtn.contains(e.target) &&
-      !upgradeMenu.contains(e.target)
-    ) {
+    if (!upgradeBtn.contains(e.target) && !upgradeMenu.contains(e.target)) {
       closeUpgradeMenu();
     }
   });
