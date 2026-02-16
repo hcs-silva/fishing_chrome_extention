@@ -7,8 +7,10 @@ const app = express();
 
 connectDB();
 
+const isDevelopment = (process.env.NODE_ENV || "development") !== "production";
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
+  ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
   : [
       "http://localhost:3000",
       "http://localhost:5005",
@@ -18,11 +20,18 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true); // allow tools like curl or extensions without Origin
-      if (
-        allowedOrigins.includes(origin) ||
-        origin.startsWith("chrome-extension://")
-      )
-        return callback(null, true);
+
+      if (isDevelopment) {
+        const isLocalhost =
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+        const isChromeExtension = origin.startsWith("chrome-extension://");
+
+        if (isLocalhost || isChromeExtension) {
+          return callback(null, true);
+        }
+      }
+
+      if (allowedOrigins.includes(origin)) return callback(null, true);
       callback(new Error("Not allowed by CORS"));
     },
   }),

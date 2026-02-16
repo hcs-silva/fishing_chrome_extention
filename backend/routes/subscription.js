@@ -10,6 +10,7 @@ const {
   STRIPE_PRICE_YEARLY,
   FRONTEND_URL,
 } = require("../config/config");
+const { buildStripeReturnUrls } = require("../utils/returnUrl");
 
 // Initialize Stripe only if configured
 let stripe;
@@ -17,40 +18,65 @@ if (STRIPE_SECRET_KEY) {
   stripe = require("stripe")(STRIPE_SECRET_KEY);
 }
 
-const EXTENSION_POPUP_PATH = "/popup/popup.html";
-
-const getExtensionOriginFromRequest = (req) => {
-  const originHeader = req.get("origin");
-  if (originHeader && originHeader.startsWith("chrome-extension://")) {
-    return originHeader.replace(/\/+$/, "");
-  }
-  return null;
+const getRequestBaseUrl = (req) => {
+  const forwardedProto = req.get("x-forwarded-proto");
+  const protocol = forwardedProto
+    ? forwardedProto.split(",")[0].trim()
+    : req.protocol;
+  return `${protocol}://${req.get("host")}`;
 };
 
-const buildStripeReturnUrls = (req) => {
-  const extensionOrigin = getExtensionOriginFromRequest(req);
-  const baseReturnUrl = extensionOrigin
-    ? `${extensionOrigin}${EXTENSION_POPUP_PATH}`
-    : FRONTEND_URL;
+const buildHostedReturnUrls = (req) => {
+  const extensionReturnUrls = buildStripeReturnUrls({
+    originHeader: req.get("origin"),
+    frontendUrl: FRONTEND_URL,
+  });
 
-  if (!baseReturnUrl) {
+  if (!extensionReturnUrls) {
     return null;
   }
 
-  const normalizedBase = baseReturnUrl.replace(/\/+$/, "");
-  const successUrl = new URL(normalizedBase);
-  successUrl.searchParams.set("billingStatus", "success");
-  successUrl.searchParams.set("session_id", "{CHECKOUT_SESSION_ID}");
-
-  const cancelUrl = new URL(normalizedBase);
-  cancelUrl.searchParams.set("billingStatus", "cancel");
+  const hostedReturnBase = `${getRequestBaseUrl(req)}/api/subscription/return`;
+  const encodedRedirect = encodeURIComponent(extensionReturnUrls.returnUrl);
 
   return {
-    successUrl: successUrl.toString(),
-    cancelUrl: cancelUrl.toString(),
-    returnUrl: new URL(normalizedBase).toString(),
+    successUrl: `${hostedReturnBase}?billingStatus=success&redirect=${encodedRedirect}&session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${hostedReturnBase}?billingStatus=cancel&redirect=${encodedRedirect}`,
+    portalReturnUrl: `${hostedReturnBase}?billingStatus=portal&redirect=${encodedRedirect}`,
   };
 };
+
+const buildExtensionRedirectUrl = ({ redirect, billingStatus, sessionId }) => {
+  if (
+    typeof redirect !== "string" ||
+    !redirect.startsWith("chrome-extension://")
+  ) {
+    return null;
+  }
+
+  const params = [];
+  if (billingStatus) {
+    params.push(`billingStatus=${encodeURIComponent(billingStatus)}`);
+  }
+  if (sessionId) {
+    params.push(`session_id=${encodeURIComponent(sessionId)}`);
+  }
+
+  if (params.length === 0) {
+    return redirect;
+  }
+
+  const separator = redirect.includes("?") ? "&" : "?";
+  return `${redirect}${separator}${params.join("&")}`;
+};
+
+const escapeHtml = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const ensureStripeConfigured = (res) => {
   if (!stripe || !STRIPE_SECRET_KEY) {
@@ -188,7 +214,7 @@ router.post("/create-checkout", subscriptionLimiter, auth, async (req, res) => {
       return;
     }
 
-    const returnUrls = buildStripeReturnUrls(req);
+    const returnUrls = buildHostedReturnUrls(req);
     if (!returnUrls) {
       return res.status(500).json({
         erro: "Sistema não configurado corretamente. Contacte o suporte.",
@@ -321,7 +347,7 @@ router.post("/create-portal", subscriptionLimiter, auth, async (req, res) => {
       return res.status(400).json({ erro: "Cliente Stripe não encontrado" });
     }
 
-    const returnUrls = buildStripeReturnUrls(req);
+    const returnUrls = buildHostedReturnUrls(req);
     if (!returnUrls) {
       return res.status(500).json({
         erro: "Sistema não configurado corretamente. Contacte o suporte.",
@@ -330,7 +356,7 @@ router.post("/create-portal", subscriptionLimiter, auth, async (req, res) => {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: returnUrls.returnUrl,
+      return_url: returnUrls.portalReturnUrl,
     });
 
     res.json({ url: portalSession.url });
@@ -340,6 +366,60 @@ router.post("/create-portal", subscriptionLimiter, auth, async (req, res) => {
       .status(500)
       .json({ erro: "Erro ao criar sessão do portal de faturação" });
   }
+});
+
+/**
+ * GET /api/subscription/return
+ * Hosted return page that relays back to extension popup URL.
+ */
+router.get("/return", (req, res) => {
+  const { billingStatus, session_id: sessionId, redirect } = req.query;
+  const extensionRedirectUrl = buildExtensionRedirectUrl({
+    redirect,
+    billingStatus,
+    sessionId,
+  });
+
+  const statusMessage =
+    billingStatus === "success"
+      ? "Pagamento concluído com sucesso. A abrir a extensão..."
+      : billingStatus === "cancel"
+        ? "Pagamento cancelado. A abrir a extensão..."
+        : "A regressar à extensão...";
+
+  const safeStatusMessage = escapeHtml(statusMessage);
+  const safeRedirectUrl = extensionRedirectUrl
+    ? escapeHtml(extensionRedirectUrl)
+    : "";
+
+  const manualActionHtml = extensionRedirectUrl
+    ? `<a href="${safeRedirectUrl}" style="display:inline-block;padding:10px 16px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;">Abrir extensão</a>`
+    : "<p>Não foi possível gerar o link de retorno da extensão. Abre manualmente o popup da extensão no Chrome.</p>";
+
+  res.status(200).type("html").send(`<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A regressar à extensão</title>
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f8fafc; color: #0f172a;">
+  <main style="max-width: 560px; margin: 16px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; text-align: center;">
+    <h1 style="margin-top: 0; font-size: 22px;">Fishing Tides PT</h1>
+    <p>${safeStatusMessage}</p>
+    ${manualActionHtml}
+    <p style="margin-bottom: 0; margin-top: 16px; color: #475569; font-size: 14px;">Se nada acontecer, usa o botão acima.</p>
+  </main>
+  <script>
+    const redirectUrl = ${extensionRedirectUrl ? `"${safeRedirectUrl}"` : "null"};
+    if (redirectUrl) {
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 250);
+    }
+  </script>
+</body>
+</html>`);
 });
 
 /**
@@ -400,20 +480,24 @@ router.post(
         return;
       }
 
-      // Verify webhook signature if secret is configured
-      if (STRIPE_WEBHOOK_SECRET) {
-        const signature = req.headers["stripe-signature"];
-        event = stripe.webhooks.constructEvent(
-          req.body,
-          signature,
-          STRIPE_WEBHOOK_SECRET,
-        );
-      } else {
-        const payload = Buffer.isBuffer(req.body)
-          ? req.body.toString("utf8")
-          : req.body;
-        event = typeof payload === "string" ? JSON.parse(payload) : payload;
+      if (!STRIPE_WEBHOOK_SECRET) {
+        return res.status(500).json({
+          erro: "Webhook Stripe não configurado corretamente.",
+        });
       }
+
+      const signature = req.headers["stripe-signature"];
+      if (!signature) {
+        return res.status(400).json({
+          erro: "Assinatura Stripe ausente.",
+        });
+      }
+
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        signature,
+        STRIPE_WEBHOOK_SECRET,
+      );
 
       // Handle the event
       switch (event.type) {

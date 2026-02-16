@@ -32,7 +32,9 @@
       ],
       "matches": [
         "https://checkout.stripe.com/*",
-        "https://billing.stripe.com/*"
+        "https://billing.stripe.com/*",
+        "http://localhost:5005/*",
+        "https://fishing-chrome-extention.onrender.com/*"
       ]
     }
   ],
