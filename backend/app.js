@@ -96,9 +96,7 @@ app.use((err, req, res, next) => {
   // Log error for debugging (consider using a proper logging service in production)
   console.error('[Error]', err.message);
   
-  // Don't leak error details in production
-  const isDevelopment = process.env.NODE_ENV !== 'production';
-  
+  // Don't leak error details in production - reuse isDevelopment from above
   res.status(err.status || 500).json({
     erro: isDevelopment ? err.message : 'Ocorreu um erro no servidor',
     ...(isDevelopment && { stack: err.stack })
