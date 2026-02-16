@@ -102,9 +102,21 @@
         <div id="billingActionsPanel" class="hidden">
           <div class="billing-actions">
             <button id="statusBtn" class="btn" type="button">Ver estado</button>
-            <button id="checkoutBtn" class="btn" type="button">
-              Upgrade mensal
-            </button>
+            <div class="upgrade-dropdown">
+              <button id="upgradeBtn" class="btn" type="button">
+                Upgrade
+              </button>
+              <div id="upgradeMenu" class="dropdown-menu hidden">
+                <div class="dropdown-item" data-plan="monthly">
+                  <span class="plan-label">Mensal</span>
+                  <span class="plan-price" id="monthlyPrice">...</span>
+                </div>
+                <div class="dropdown-item" data-plan="yearly">
+                  <span class="plan-label">Anual</span>
+                  <span class="plan-price" id="yearlyPrice">...</span>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="billing-actions">
             <button id="portalBtn" class="btn secondary" type="button">

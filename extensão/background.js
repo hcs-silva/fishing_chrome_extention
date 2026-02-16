@@ -186,6 +186,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "getPlans") {
+    apiRequest("/subscription/plans", {
+      method: "GET",
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
   sendResponse({ ok: false, error: "Tipo de mensagem não suportado" });
   return false;
 });

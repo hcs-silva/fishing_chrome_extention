@@ -56,7 +56,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const registerBtn = document.getElementById("registerBtn");
   const loginBtn = document.getElementById("loginBtn");
   const statusBtn = document.getElementById("statusBtn");
-  const checkoutBtn = document.getElementById("checkoutBtn");
+  const upgradeBtn = document.getElementById("upgradeBtn");
+  const upgradeMenu = document.getElementById("upgradeMenu");
   const portalBtn = document.getElementById("portalBtn");
   const logoutBtn = document.getElementById("logoutBtn");
   const billingMessage = document.getElementById("billingMessage");
@@ -65,6 +66,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const feedbackText = document.getElementById("feedbackText");
   const sendFeedbackBtn = document.getElementById("sendFeedbackBtn");
   let authMode = null;
+  let plansCache = null;
 
   const setBillingMessage = (message, isError = false) => {
     billingMessage.textContent = message;
@@ -124,6 +126,107 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     return { email, password };
+  };
+
+  const fetchPlans = async () => {
+    if (plansCache) {
+      return plansCache;
+    }
+
+    const result = await sendRuntimeMessage({ type: "getPlans" });
+    plansCache = result.plans || [];
+    return plansCache;
+  };
+
+  const formatPrice = (amount, currency) => {
+    return new Intl.NumberFormat("pt-PT", {
+      style: "currency",
+      currency: currency || "EUR",
+    }).format(amount);
+  };
+
+  const updatePlanPrices = async () => {
+    try {
+      const plans = await fetchPlans();
+
+      const monthlyPlan = plans.find((p) => p.type === "monthly");
+      const yearlyPlan = plans.find((p) => p.type === "yearly");
+
+      const monthlyPriceEl = document.getElementById("monthlyPrice");
+      const yearlyPriceEl = document.getElementById("yearlyPrice");
+
+      if (monthlyPlan && monthlyPriceEl) {
+        monthlyPriceEl.textContent = formatPrice(
+          monthlyPlan.amount,
+          monthlyPlan.currency,
+        );
+      }
+
+      if (yearlyPlan && yearlyPriceEl) {
+        yearlyPriceEl.textContent = formatPrice(
+          yearlyPlan.amount,
+          yearlyPlan.currency,
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao obter preços:", error);
+    }
+  };
+
+  const toggleUpgradeMenu = async () => {
+    const isHidden = upgradeMenu.classList.contains("hidden");
+
+    if (isHidden) {
+      // Opening the menu - fetch and update prices
+      await updatePlanPrices();
+      upgradeMenu.classList.remove("hidden");
+    } else {
+      // Closing the menu
+      upgradeMenu.classList.add("hidden");
+    }
+  };
+
+  const closeUpgradeMenu = () => {
+    upgradeMenu.classList.add("hidden");
+  };
+
+  const handlePlanSelection = async (planType) => {
+    closeUpgradeMenu();
+
+    try {
+      setBillingMessage("A abrir checkout Stripe...");
+      const token = await requireToken();
+
+      const status = await sendRuntimeMessage({
+        type: "subscriptionStatus",
+        token,
+      });
+
+      if (
+        (status.plano || "free") === "premium" &&
+        (status.planoStatus === "active" || status.planoStatus === "trialing")
+      ) {
+        setBillingMessage("Já tens plano PREMIUM ativo. Usa 'Gerir plano'.");
+        return;
+      }
+
+      const session = await sendRuntimeMessage({
+        type: "createCheckout",
+        token,
+        planType: planType,
+      });
+
+      if (!session.url) {
+        throw new Error("URL de checkout não encontrada");
+      }
+
+      await chrome.tabs.create({ url: session.url });
+      setBillingMessage(
+        "Checkout aberto. Após pagamento, o webhook ativa o PREMIUM; clica 'Ver estado'.",
+      );
+    } catch (error) {
+      setBillingMessage(error.message || "Erro ao abrir checkout", true);
+    }
   };
 
   const atualizarBadge = (score) => {
@@ -284,40 +387,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  checkoutBtn.addEventListener("click", async () => {
-    try {
-      setBillingMessage("A abrir checkout Stripe...");
-      const token = await requireToken();
+  // Upgrade button - toggle dropdown menu
+  upgradeBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    await toggleUpgradeMenu();
+  });
 
-      const status = await sendRuntimeMessage({
-        type: "subscriptionStatus",
-        token,
-      });
+  // Handle plan selection from dropdown
+  document.querySelectorAll(".dropdown-item").forEach((item) => {
+    item.addEventListener("click", async (e) => {
+      const planType = e.currentTarget.getAttribute("data-plan");
+      await handlePlanSelection(planType);
+    });
+  });
 
-      if (
-        (status.plano || "free") === "premium" &&
-        (status.planoStatus === "active" || status.planoStatus === "trialing")
-      ) {
-        setBillingMessage("Já tens plano PREMIUM ativo. Usa 'Gerir plano'.");
-        return;
-      }
-
-      const session = await sendRuntimeMessage({
-        type: "createCheckout",
-        token,
-        planType: "monthly",
-      });
-
-      if (!session.url) {
-        throw new Error("URL de checkout não encontrada");
-      }
-
-      await chrome.tabs.create({ url: session.url });
-      setBillingMessage(
-        "Checkout aberto. Após pagamento, o webhook ativa o PREMIUM; clica 'Ver estado'.",
-      );
-    } catch (error) {
-      setBillingMessage(error.message || "Erro ao abrir checkout", true);
+  // Close dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (
+      !upgradeBtn.contains(e.target) &&
+      !upgradeMenu.contains(e.target)
+    ) {
+      closeUpgradeMenu();
     }
   });
 
