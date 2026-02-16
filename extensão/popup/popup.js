@@ -176,15 +176,37 @@ document.addEventListener("DOMContentLoaded", async () => {
   const handleBillingRedirect = async () => {
     const params = new URLSearchParams(window.location.search);
     const billingStatus = params.get("billingStatus");
+    const sessionId = params.get("session_id");
 
     if (!billingStatus) {
       return;
     }
 
     if (billingStatus === "success") {
-      setBillingMessage(
-        "Pagamento concluído. O plano PREMIUM será ativado em instantes; clica 'Ver estado'.",
-      );
+      try {
+        if (!sessionId) {
+          setBillingMessage(
+            "Pagamento concluído. Sessão não encontrada para sincronização automática; clica 'Ver estado'.",
+          );
+        } else {
+          const token = await requireToken();
+          const finalizeResult = await sendRuntimeMessage({
+            type: "finalizeCheckout",
+            token,
+            sessionId,
+          });
+
+          setBillingMessage(
+            `Pagamento concluído. Plano: ${(finalizeResult.plano || "premium").toUpperCase()} | Estado: ${finalizeResult.planoStatus || "active"}`,
+          );
+        }
+      } catch (error) {
+        setBillingMessage(
+          error.message ||
+            "Pagamento concluído, mas falhou a sincronização automática. Clica 'Ver estado'.",
+          true,
+        );
+      }
     } else if (billingStatus === "cancel") {
       setBillingMessage(
         "Checkout cancelado. Podes tentar novamente quando quiseres.",
@@ -243,7 +265,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       await chrome.tabs.create({ url: session.url });
       setBillingMessage(
-        "Checkout aberto. Após pagamento, o webhook ativa o PREMIUM; clica 'Ver estado'.",
+        "Checkout aberto. Após pagamento, regressa à extensão para sincronizar o plano automaticamente.",
       );
     } catch (error) {
       setBillingMessage(error.message || "Erro ao abrir checkout", true);

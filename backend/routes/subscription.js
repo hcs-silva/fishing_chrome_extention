@@ -88,6 +88,73 @@ const ensureStripeConfigured = (res) => {
   return true;
 };
 
+const mapStripeStatusToPlanStatus = (stripeStatus) => {
+  switch (stripeStatus) {
+    case "trialing":
+      return "trialing";
+    case "active":
+      return "active";
+    case "past_due":
+    case "unpaid":
+      return "past_due";
+    case "canceled":
+    case "incomplete":
+    case "incomplete_expired":
+    case "paused":
+      return "canceled";
+    default:
+      return "active";
+  }
+};
+
+const applySubscriptionStateToUser = async ({
+  user,
+  customerId,
+  subscriptionId,
+  stripeSubscription,
+  checkoutPaymentStatus,
+}) => {
+  if (customerId) {
+    user.stripeCustomerId = customerId;
+  }
+
+  if (subscriptionId) {
+    user.stripeSubscriptionId = subscriptionId;
+  }
+
+  let subscription = stripeSubscription || null;
+  if (!subscription && subscriptionId) {
+    try {
+      subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    } catch (error) {
+      console.error("Error retrieving subscription details:", error);
+    }
+  }
+
+  const mappedStatus = mapStripeStatusToPlanStatus(subscription?.status);
+  user.planoStatus = mappedStatus;
+
+  if (subscription?.current_period_end) {
+    user.planoExpiraEm = new Date(subscription.current_period_end * 1000);
+  }
+
+  const premiumActive =
+    mappedStatus === "active" || mappedStatus === "trialing";
+
+  const paidCheckout =
+    checkoutPaymentStatus === "paid" ||
+    checkoutPaymentStatus === "no_payment_required";
+
+  if (premiumActive || paidCheckout) {
+    user.plano = "premium";
+    if (!premiumActive) {
+      user.planoStatus = "active";
+    }
+  } else {
+    user.plano = "free";
+  }
+};
+
 /**
  * GET /api/subscription/status
  * Get current subscription status
@@ -333,6 +400,75 @@ router.get(
 );
 
 /**
+ * POST /api/subscription/finalize-checkout
+ * Confirm checkout completion and sync user plan without waiting for webhook.
+ */
+router.post(
+  "/finalize-checkout",
+  subscriptionLimiter,
+  auth,
+  async (req, res) => {
+    try {
+      if (!ensureStripeConfigured(res)) {
+        return;
+      }
+
+      const { sessionId } = req.body;
+      if (!sessionId) {
+        return res.status(400).json({ erro: "sessionId é obrigatório" });
+      }
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ["subscription"],
+      });
+
+      if (session?.metadata?.userId !== req.user._id.toString()) {
+        return res
+          .status(403)
+          .json({ erro: "Sessão de checkout não autorizada" });
+      }
+
+      if (session.status !== "complete") {
+        return res.status(400).json({
+          erro: "Checkout ainda não concluído",
+          status: session.status,
+          payment_status: session.payment_status,
+        });
+      }
+
+      await applySubscriptionStateToUser({
+        user: req.user,
+        customerId: session.customer,
+        subscriptionId:
+          typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription?.id,
+        stripeSubscription:
+          typeof session.subscription === "object"
+            ? session.subscription
+            : null,
+        checkoutPaymentStatus: session.payment_status,
+      });
+
+      await req.user.save();
+
+      res.json({
+        mensagem: "Plano sincronizado com sucesso",
+        plano: req.user.plano,
+        planoStatus: req.user.planoStatus,
+        planoExpiraEm: req.user.planoExpiraEm,
+      });
+    } catch (error) {
+      console.error("Error finalizing checkout session:", error);
+      res.status(500).json({
+        erro: "Erro ao finalizar checkout",
+        detalhes: error.message,
+      });
+    }
+  },
+);
+
+/**
  * POST /api/subscription/create-portal
  * Create Stripe billing portal session
  */
@@ -372,8 +508,41 @@ router.post("/create-portal", subscriptionLimiter, auth, async (req, res) => {
  * GET /api/subscription/return
  * Hosted return page that relays back to extension popup URL.
  */
-router.get("/return", (req, res) => {
+router.get("/return", async (req, res) => {
   const { billingStatus, session_id: sessionId, redirect } = req.query;
+
+  if (billingStatus === "success" && sessionId && stripe) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ["subscription"],
+      });
+
+      const userId = session?.metadata?.userId;
+      if (userId) {
+        const user = await User.findById(userId);
+        if (user) {
+          await applySubscriptionStateToUser({
+            user,
+            customerId: session.customer,
+            subscriptionId:
+              typeof session.subscription === "string"
+                ? session.subscription
+                : session.subscription?.id,
+            stripeSubscription:
+              typeof session.subscription === "object"
+                ? session.subscription
+                : null,
+            checkoutPaymentStatus: session.payment_status,
+          });
+
+          await user.save();
+        }
+      }
+    } catch (error) {
+      console.error("Error syncing user from hosted return route:", error);
+    }
+  }
+
   const extensionRedirectUrl = buildExtensionRedirectUrl({
     redirect,
     billingStatus,
@@ -509,30 +678,12 @@ router.post(
 
           const user = await User.findById(userId);
           if (user) {
-            user.stripeCustomerId = customerId;
-            user.stripeSubscriptionId = subscriptionId;
-            user.plano = "premium";
-            user.planoStatus = "active";
-
-            if (subscriptionId) {
-              try {
-                const subscription =
-                  await stripe.subscriptions.retrieve(subscriptionId);
-                if (subscription?.current_period_end) {
-                  user.planoExpiraEm = new Date(
-                    subscription.current_period_end * 1000,
-                  );
-                }
-                if (subscription?.status) {
-                  user.planoStatus = subscription.status;
-                }
-              } catch (error) {
-                console.error(
-                  "Error retrieving subscription after checkout:",
-                  error,
-                );
-              }
-            }
+            await applySubscriptionStateToUser({
+              user,
+              customerId,
+              subscriptionId,
+              checkoutPaymentStatus: session.payment_status,
+            });
 
             await user.save();
           }
@@ -546,18 +697,16 @@ router.post(
           });
 
           if (user) {
-            user.planoStatus = subscription.status;
+            user.planoStatus = mapStripeStatusToPlanStatus(subscription.status);
             user.planoExpiraEm = new Date(
               subscription.current_period_end * 1000,
             );
 
-            // If subscription is canceled or unpaid, downgrade to free
-            if (
-              ["canceled", "unpaid", "incomplete_expired"].includes(
-                subscription.status,
-              )
-            ) {
+            // Keep premium only while subscription is active/trialing
+            if (!["active", "trialing"].includes(user.planoStatus)) {
               user.plano = "free";
+            } else {
+              user.plano = "premium";
             }
 
             await user.save();
@@ -589,6 +738,7 @@ router.post(
               stripeSubscriptionId: subscriptionId,
             });
             if (user) {
+              user.plano = "premium";
               user.planoStatus = "active";
               // Update expiration date if available
               if (

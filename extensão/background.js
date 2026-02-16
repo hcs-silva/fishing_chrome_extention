@@ -186,6 +186,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "finalizeCheckout") {
+    apiRequest("/subscription/finalize-checkout", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${message.token}`,
+      },
+      body: JSON.stringify({
+        sessionId: message.sessionId,
+      }),
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
   if (message.type === "getPlans") {
     apiRequest("/subscription/plans", {
       method: "GET",
