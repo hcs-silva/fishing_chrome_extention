@@ -171,8 +171,9 @@ router.post('/personalizados', apiLimiter, auth, async (req, res) => {
 
     // Generate unique ID for the spot
     const existingIds = (user.spotsPersonalizados || []).map(s => s.id);
+    const existingIdsSet = new Set(existingIds);
     let newId = CUSTOM_SPOT_ID_START;
-    while (existingIds.includes(newId)) {
+    while (existingIdsSet.has(newId)) {
       newId++;
     }
 

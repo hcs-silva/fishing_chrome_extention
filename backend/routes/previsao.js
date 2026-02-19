@@ -11,6 +11,12 @@ const { apiLimiter } = require('../middleware/rateLimiter');
 // Free spots (available to all users)
 const FREE_SPOT_IDS = [1, 2, 3]; // Costa da Caparica, Ericeira, Peniche
 
+// Helper function to find custom spot
+const findCustomSpot = (user, spotId) => {
+  if (!user || !user.spotsPersonalizados) return null;
+  return user.spotsPersonalizados.find(s => s.id === parseInt(spotId));
+};
+
 // Optional authentication middleware - doesn't require auth but checks if present
 const optionalAuth = async (req, res, next) => {
   try {
@@ -56,7 +62,7 @@ router.get('/', apiLimiter, optionalAuth, async (req, res) => {
 
     // If spotId is provided with coordinates, try to find the spot name
     if (spotId && req.user) {
-      const customSpot = (req.user.spotsPersonalizados || []).find(s => s.id === parseInt(spotId));
+      const customSpot = findCustomSpot(req.user, spotId);
       if (customSpot) {
         spotName = customSpot.nome;
       }
@@ -67,7 +73,7 @@ router.get('/', apiLimiter, optionalAuth, async (req, res) => {
     if (!spot) {
       // Check if it's a custom spot for authenticated users
       if (req.user) {
-        const customSpot = (req.user.spotsPersonalizados || []).find(s => s.id === parseInt(spotId));
+        const customSpot = findCustomSpot(req.user, spotId);
         if (customSpot) {
           latitude = customSpot.lat;
           longitude = customSpot.lng;
