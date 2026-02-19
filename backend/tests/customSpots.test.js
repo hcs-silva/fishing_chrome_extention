@@ -77,6 +77,8 @@ test("Free user spot limit check", () => {
 });
 
 test("Generate unique spot ID", () => {
+  // This function starts at 1000 and increments until it finds an ID not in the existing list
+  // Note: It doesn't necessarily fill gaps, but finds the next available ID from the start point
   const generateUniqueId = (existingIds) => {
     let newId = 1000;
     while (existingIds.includes(newId)) {
@@ -85,12 +87,15 @@ test("Generate unique spot ID", () => {
     return newId;
   };
 
-  // No existing spots
+  // No existing spots - starts at 1000
   assert.equal(generateUniqueId([]), 1000);
 
-  // Some existing spots
+  // Sequential existing spots - returns next in sequence
   assert.equal(generateUniqueId([1000, 1001, 1002]), 1003);
 
-  // Spots with gap
+  // Spots with gap - returns first available from start (happens to fill gap)
   assert.equal(generateUniqueId([1000, 1002]), 1001);
+  
+  // Non-sequential - still starts from 1000
+  assert.equal(generateUniqueId([1005, 1010]), 1000);
 });

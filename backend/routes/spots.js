@@ -6,6 +6,9 @@ const { isPremium } = require('../middleware/planCheck');
 const { apiLimiter } = require('../middleware/rateLimiter');
 const User = require('../models/User');
 
+// Starting ID for custom spots (to avoid conflicts with predefined spots)
+const CUSTOM_SPOT_ID_START = 1000;
+
 /**
  * GET /api/spots/all
  * Get all fishing spots (Premium only)
@@ -168,7 +171,7 @@ router.post('/personalizados', apiLimiter, auth, async (req, res) => {
 
     // Generate unique ID for the spot
     const existingIds = (user.spotsPersonalizados || []).map(s => s.id);
-    let newId = 1000; // Start custom spot IDs at 1000 to avoid conflicts with predefined spots
+    let newId = CUSTOM_SPOT_ID_START;
     while (existingIds.includes(newId)) {
       newId++;
     }

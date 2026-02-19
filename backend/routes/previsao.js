@@ -39,6 +39,12 @@ router.get('/', apiLimiter, optionalAuth, async (req, res) => {
   let latitude = null;
   let longitude = null;
 
+  // Check if user is premium (reusable for both access control and response)
+  const isPremium = req.user && 
+                    req.user.plano === 'premium' && 
+                    (req.user.planoStatus === 'active' || req.user.planoStatus === 'trialing') &&
+                    (!req.user.planoExpiraEm || new Date() <= req.user.planoExpiraEm);
+
   // Check if custom coordinates are provided
   if (lat && lng) {
     latitude = parseFloat(lat);
@@ -82,20 +88,13 @@ router.get('/', apiLimiter, optionalAuth, async (req, res) => {
   }
 
   // Check if user has access to predefined spots
-  if (spot) {
-    const isPremium = req.user && 
-                      req.user.plano === 'premium' && 
-                      (req.user.planoStatus === 'active' || req.user.planoStatus === 'trialing') &&
-                      (!req.user.planoExpiraEm || new Date() <= req.user.planoExpiraEm);
-
-    if (!isPremium && !FREE_SPOT_IDS.includes(spot.id)) {
-      return res.status(403).json({ 
-        erro: 'Este spot é exclusivo para utilizadores Premium',
-        plano: req.user ? req.user.plano : 'free',
-        spotId: spot.id,
-        upgradeUrl: '/api/subscription/create-checkout'
-      });
-    }
+  if (spot && !isPremium && !FREE_SPOT_IDS.includes(spot.id)) {
+    return res.status(403).json({ 
+      erro: 'Este spot é exclusivo para utilizadores Premium',
+      plano: req.user ? req.user.plano : 'free',
+      spotId: spot.id,
+      upgradeUrl: '/api/subscription/create-checkout'
+    });
   }
 
   try {
@@ -172,7 +171,7 @@ router.get('/', apiLimiter, optionalAuth, async (req, res) => {
       recomendacao: scorePeixe >= 8 ? '🚀 Vai AGORA!' : 
                     scorePeixe >= 6 ? '👍 Razoável' : 
                     scorePeixe >= 4 ? '⚠️ Cuidados' : '⏳ Espera melhor',
-      plano: req.user && req.user.plano === 'premium' ? 'premium' : 'free'
+      plano: isPremium ? 'premium' : 'free'
     });
   } catch (error) {
     console.error('Error fetching forecast data:', error);
