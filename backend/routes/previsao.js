@@ -32,32 +32,79 @@ const optionalAuth = async (req, res, next) => {
 };
 
 router.get('/', apiLimiter, optionalAuth, async (req, res) => {
-  const { spotId } = req.query;
-  const spot = spots.find(s => s.id === parseInt(spotId));
-  if (!spot) return res.status(404).json({ erro: 'Spot não encontrado' });
+  const { spotId, lat, lng } = req.query;
+  
+  let spot = null;
+  let spotName = 'Spot Personalizado';
+  let latitude = null;
+  let longitude = null;
 
-  // Check if user has access to this spot
-  const isPremium = req.user && 
-                    req.user.plano === 'premium' && 
-                    (req.user.planoStatus === 'active' || req.user.planoStatus === 'trialing') &&
-                    (!req.user.planoExpiraEm || new Date() <= req.user.planoExpiraEm);
+  // Check if custom coordinates are provided
+  if (lat && lng) {
+    latitude = parseFloat(lat);
+    longitude = parseFloat(lng);
+    
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return res.status(400).json({ erro: 'Coordenadas inválidas' });
+    }
 
-  if (!isPremium && !FREE_SPOT_IDS.includes(spot.id)) {
-    return res.status(403).json({ 
-      erro: 'Este spot é exclusivo para utilizadores Premium',
-      plano: req.user ? req.user.plano : 'free',
-      spotId: spot.id,
-      upgradeUrl: '/api/subscription/create-checkout'
-    });
+    // If spotId is provided with coordinates, try to find the spot name
+    if (spotId && req.user) {
+      const customSpot = (req.user.spotsPersonalizados || []).find(s => s.id === parseInt(spotId));
+      if (customSpot) {
+        spotName = customSpot.nome;
+      }
+    }
+  } else if (spotId) {
+    // Use predefined spot
+    spot = spots.find(s => s.id === parseInt(spotId));
+    if (!spot) {
+      // Check if it's a custom spot for authenticated users
+      if (req.user) {
+        const customSpot = (req.user.spotsPersonalizados || []).find(s => s.id === parseInt(spotId));
+        if (customSpot) {
+          latitude = customSpot.lat;
+          longitude = customSpot.lng;
+          spotName = customSpot.nome;
+        }
+      }
+      
+      if (!latitude || !longitude) {
+        return res.status(404).json({ erro: 'Spot não encontrado' });
+      }
+    } else {
+      latitude = spot.lat;
+      longitude = spot.lng;
+      spotName = spot.nome;
+    }
+  } else {
+    return res.status(400).json({ erro: 'spotId ou coordenadas (lat, lng) são obrigatórios' });
+  }
+
+  // Check if user has access to predefined spots
+  if (spot) {
+    const isPremium = req.user && 
+                      req.user.plano === 'premium' && 
+                      (req.user.planoStatus === 'active' || req.user.planoStatus === 'trialing') &&
+                      (!req.user.planoExpiraEm || new Date() <= req.user.planoExpiraEm);
+
+    if (!isPremium && !FREE_SPOT_IDS.includes(spot.id)) {
+      return res.status(403).json({ 
+        erro: 'Este spot é exclusivo para utilizadores Premium',
+        plano: req.user ? req.user.plano : 'free',
+        spotId: spot.id,
+        upgradeUrl: '/api/subscription/create-checkout'
+      });
+    }
   }
 
   try {
     // Fetch all data in parallel from free APIs
     const [tideData, marineData, windData, solunarData] = await Promise.all([
-      getTideData(spot.lat, spot.lng),
-      getMarineWeather(spot.lat, spot.lng),
-      getWindData(spot.lat, spot.lng),
-      getSolunarData(spot.lat, spot.lng)
+      getTideData(latitude, longitude),
+      getMarineWeather(latitude, longitude),
+      getWindData(latitude, longitude),
+      getSolunarData(latitude, longitude)
     ]);
 
     const agora = new Date();
@@ -96,7 +143,7 @@ router.get('/', apiLimiter, optionalAuth, async (req, res) => {
     const tempAgua = estimateWaterTemperature(agora.getMonth());
 
     res.json({
-      spot: spot.nome,
+      spot: spotName,
       agora: agora.toLocaleTimeString('pt-PT'),
       mare: {
         altura: tideData.height.toFixed(1) + 'm',
@@ -125,7 +172,7 @@ router.get('/', apiLimiter, optionalAuth, async (req, res) => {
       recomendacao: scorePeixe >= 8 ? '🚀 Vai AGORA!' : 
                     scorePeixe >= 6 ? '👍 Razoável' : 
                     scorePeixe >= 4 ? '⚠️ Cuidados' : '⏳ Espera melhor',
-      plano: isPremium ? 'premium' : 'free'
+      plano: req.user && req.user.plano === 'premium' ? 'premium' : 'free'
     });
   } catch (error) {
     console.error('Error fetching forecast data:', error);

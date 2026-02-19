@@ -1,18 +1,33 @@
-function fetchPrevisao(spotId) {
+function fetchPrevisao(spotId, coords = null) {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage({ type: "getPrevisao", spotId }, (response) => {
-      const lastError = chrome.runtime.lastError;
-      if (lastError) {
-        reject(new Error(lastError.message));
-        return;
+    const messagePayload = { type: "getPrevisao", spotId };
+    
+    // Add coordinates if provided
+    if (coords && coords.lat && coords.lng) {
+      messagePayload.lat = coords.lat;
+      messagePayload.lng = coords.lng;
+    }
+    
+    // Add token if available for custom spots
+    chrome.storage.local.get(["authToken"], (result) => {
+      if (result.authToken) {
+        messagePayload.token = result.authToken;
       }
+      
+      chrome.runtime.sendMessage(messagePayload, (response) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          reject(new Error(lastError.message));
+          return;
+        }
 
-      if (!response || !response.ok) {
-        reject(new Error((response && response.error) || "Erro"));
-        return;
-      }
+        if (!response || !response.ok) {
+          reject(new Error((response && response.error) || "Erro"));
+          return;
+        }
 
-      resolve(response.data);
+        resolve(response.data);
+      });
     });
   });
 }
@@ -65,8 +80,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   const feedbackForm = document.getElementById("feedbackForm");
   const feedbackText = document.getElementById("feedbackText");
   const sendFeedbackBtn = document.getElementById("sendFeedbackBtn");
+  
+  // Custom spots elements
+  const customSpotsToggle = document.getElementById("customSpotsToggle");
+  const customSpotsPanel = document.getElementById("customSpotsPanel");
+  const customSpotsList = document.getElementById("customSpotsList");
+  const addByMapBtn = document.getElementById("addByMapBtn");
+  const addByCoordsBtn = document.getElementById("addByCoordsBtn");
+  const mapInterface = document.getElementById("mapInterface");
+  const coordsInterface = document.getElementById("coordsInterface");
+  const mapSpotName = document.getElementById("mapSpotName");
+  const selectedLat = document.getElementById("selectedLat");
+  const selectedLng = document.getElementById("selectedLng");
+  const saveMapSpotBtn = document.getElementById("saveMapSpotBtn");
+  const cancelMapBtn = document.getElementById("cancelMapBtn");
+  const coordsSpotName = document.getElementById("coordsSpotName");
+  const coordsLat = document.getElementById("coordsLat");
+  const coordsLng = document.getElementById("coordsLng");
+  const saveCoordsSpotBtn = document.getElementById("saveCoordsSpotBtn");
+  const cancelCoordsBtn = document.getElementById("cancelCoordsBtn");
+  
   let authMode = null;
   let plansCache = null;
+  let map = null;
+  let marker = null;
+  let selectedCoords = null;
+  let customSpots = [];
 
   const setBillingMessage = (message, isError = false) => {
     billingMessage.textContent = message;
@@ -291,11 +330,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     else elem.classList.add("espera");
   };
 
-  const carregarDados = async (spotId) => {
+  const carregarDados = async (spotId, coords = null) => {
     try {
       document.getElementById("spotNome").textContent = "A carregar...";
 
-      const data = await fetchPrevisao(spotId);
+      const data = await fetchPrevisao(spotId, coords);
 
       document.getElementById("spotNome").textContent = data.spot;
       document.getElementById("mare").textContent =
@@ -504,5 +543,272 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.tabs.create({ url: mailtoLink });
     feedbackText.value = "";
     feedbackForm.classList.add("hidden");
+  });
+
+  // Custom spots functionality
+  const loadCustomSpots = async () => {
+    try {
+      const token = await getSavedToken();
+      if (!token) {
+        customSpotsList.innerHTML = '<div class="no-spots-message">Faz login para gerir os teus spots</div>';
+        return;
+      }
+
+      const result = await sendRuntimeMessage({
+        type: "getCustomSpots",
+        token,
+      });
+
+      customSpots = result.spots || [];
+      renderCustomSpots(result);
+    } catch (error) {
+      console.error("Error loading custom spots:", error);
+      customSpotsList.innerHTML = '<div class="no-spots-message">Erro ao carregar spots</div>';
+    }
+  };
+
+  const renderCustomSpots = (data) => {
+    const spots = data.spots || [];
+    const plano = data.plano || "free";
+    const limite = data.limite;
+
+    if (spots.length === 0) {
+      let message = "Ainda não tens spots personalizados.";
+      if (plano === "free") {
+        message += " Podes adicionar 1 spot.";
+      }
+      customSpotsList.innerHTML = `<div class="no-spots-message">${message}</div>`;
+    } else {
+      let html = "";
+      
+      if (plano === "free" && limite === 1) {
+        html += '<div class="spot-limit-warning">👤 FREE: 1 spot máximo. Upgrade para Premium para spots ilimitados.</div>';
+      }
+
+      spots.forEach((spot) => {
+        html += `
+          <div class="custom-spot-item" data-spot-id="${spot.id}" data-lat="${spot.lat}" data-lng="${spot.lng}">
+            <div class="custom-spot-info">
+              <div class="custom-spot-name">${spot.nome}</div>
+              <div class="custom-spot-coords">Lat: ${spot.lat.toFixed(4)}, Lng: ${spot.lng.toFixed(4)}</div>
+            </div>
+            <button class="custom-spot-remove" data-spot-id="${spot.id}">✕</button>
+          </div>
+        `;
+      });
+
+      customSpotsList.innerHTML = html;
+
+      // Add click handlers for spot selection
+      document.querySelectorAll(".custom-spot-item").forEach((item) => {
+        item.addEventListener("click", (e) => {
+          if (!e.target.classList.contains("custom-spot-remove")) {
+            const spotId = item.getAttribute("data-spot-id");
+            const lat = parseFloat(item.getAttribute("data-lat"));
+            const lng = parseFloat(item.getAttribute("data-lng"));
+            
+            // Load forecast for this spot
+            carregarDados(spotId, { lat, lng });
+            
+            // Highlight selected spot
+            document.querySelectorAll(".custom-spot-item").forEach(s => s.classList.remove("selected"));
+            item.classList.add("selected");
+          }
+        });
+      });
+
+      // Add click handlers for remove buttons
+      document.querySelectorAll(".custom-spot-remove").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const spotId = btn.getAttribute("data-spot-id");
+          
+          if (!confirm("Remover este spot?")) {
+            return;
+          }
+
+          try {
+            const token = await requireToken();
+            await sendRuntimeMessage({
+              type: "removeCustomSpot",
+              token,
+              spotId,
+            });
+
+            setBillingMessage("Spot removido com sucesso");
+            await loadCustomSpots();
+          } catch (error) {
+            setBillingMessage(error.message || "Erro ao remover spot", true);
+          }
+        });
+      });
+    }
+  };
+
+  const initMap = () => {
+    if (map) {
+      return;
+    }
+
+    // Center on Portugal
+    map = L.map("map").setView([39.5, -8.0], 7);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18,
+    }).addTo(map);
+
+    map.on("click", (e) => {
+      selectedCoords = e.latlng;
+      selectedLat.textContent = selectedCoords.lat.toFixed(6);
+      selectedLng.textContent = selectedCoords.lng.toFixed(6);
+
+      if (marker) {
+        marker.setLatLng(selectedCoords);
+      } else {
+        marker = L.marker(selectedCoords).addTo(map);
+      }
+    });
+  };
+
+  const showMapInterface = () => {
+    mapInterface.classList.remove("hidden");
+    coordsInterface.classList.add("hidden");
+    
+    // Initialize map after showing the interface
+    setTimeout(() => {
+      initMap();
+      map.invalidateSize();
+    }, 100);
+  };
+
+  const hideMapInterface = () => {
+    mapInterface.classList.add("hidden");
+    mapSpotName.value = "";
+    selectedCoords = null;
+    selectedLat.textContent = "-";
+    selectedLng.textContent = "-";
+    
+    if (marker && map) {
+      map.removeLayer(marker);
+      marker = null;
+    }
+  };
+
+  const showCoordsInterface = () => {
+    coordsInterface.classList.remove("hidden");
+    mapInterface.classList.add("hidden");
+  };
+
+  const hideCoordsInterface = () => {
+    coordsInterface.classList.add("hidden");
+    coordsSpotName.value = "";
+    coordsLat.value = "";
+    coordsLng.value = "";
+  };
+
+  // Custom spots toggle
+  customSpotsToggle.addEventListener("click", async () => {
+    const isHidden = customSpotsPanel.classList.contains("hidden");
+    
+    if (isHidden) {
+      customSpotsPanel.classList.remove("hidden");
+      await loadCustomSpots();
+    } else {
+      customSpotsPanel.classList.add("hidden");
+      hideMapInterface();
+      hideCoordsInterface();
+    }
+  });
+
+  // Add by map button
+  addByMapBtn.addEventListener("click", () => {
+    showMapInterface();
+  });
+
+  // Add by coords button
+  addByCoordsBtn.addEventListener("click", () => {
+    showCoordsInterface();
+  });
+
+  // Save map spot
+  saveMapSpotBtn.addEventListener("click", async () => {
+    try {
+      const nome = mapSpotName.value.trim();
+      
+      if (!nome) {
+        alert("Por favor, insere um nome para o spot");
+        return;
+      }
+
+      if (!selectedCoords) {
+        alert("Por favor, clica no mapa para escolher a localização");
+        return;
+      }
+
+      const token = await requireToken();
+      await sendRuntimeMessage({
+        type: "addCustomSpot",
+        token,
+        nome,
+        lat: selectedCoords.lat,
+        lng: selectedCoords.lng,
+      });
+
+      setBillingMessage("Spot adicionado com sucesso!");
+      hideMapInterface();
+      await loadCustomSpots();
+    } catch (error) {
+      setBillingMessage(error.message || "Erro ao adicionar spot", true);
+    }
+  });
+
+  // Cancel map
+  cancelMapBtn.addEventListener("click", () => {
+    hideMapInterface();
+  });
+
+  // Save coords spot
+  saveCoordsSpotBtn.addEventListener("click", async () => {
+    try {
+      const nome = coordsSpotName.value.trim();
+      const lat = parseFloat(coordsLat.value);
+      const lng = parseFloat(coordsLng.value);
+
+      if (!nome) {
+        alert("Por favor, insere um nome para o spot");
+        return;
+      }
+
+      if (isNaN(lat) || isNaN(lng)) {
+        alert("Por favor, insere coordenadas válidas");
+        return;
+      }
+
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        alert("Coordenadas fora do intervalo válido");
+        return;
+      }
+
+      const token = await requireToken();
+      await sendRuntimeMessage({
+        type: "addCustomSpot",
+        token,
+        nome,
+        lat,
+        lng,
+      });
+
+      setBillingMessage("Spot adicionado com sucesso!");
+      hideCoordsInterface();
+      await loadCustomSpots();
+    } catch (error) {
+      setBillingMessage(error.message || "Erro ao adicionar spot", true);
+    }
+  });
+
+  // Cancel coords
+  cancelCoordsBtn.addEventListener("click", () => {
+    hideCoordsInterface();
   });
 });

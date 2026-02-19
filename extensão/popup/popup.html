@@ -2,6 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
@@ -48,6 +49,79 @@
         <option value="6">Sesimbra</option>
         <option value="7">Aveiro</option>
       </select>
+
+      <div class="custom-spots-section">
+        <div class="custom-spots-toggle" id="customSpotsToggle">
+          📍 Os Meus Spots
+        </div>
+        <div class="custom-spots-panel hidden" id="customSpotsPanel">
+          <div id="customSpotsList" class="custom-spots-list"></div>
+          <div class="add-spot-options">
+            <button id="addByMapBtn" class="btn btn-small">
+              🗺️ Adicionar no Mapa
+            </button>
+            <button id="addByCoordsBtn" class="btn btn-small">
+              📌 Adicionar por Coordenadas
+            </button>
+          </div>
+          
+          <!-- Map interface -->
+          <div id="mapInterface" class="map-interface hidden">
+            <div class="map-instructions">
+              Clica no mapa para escolher a localização do spot
+            </div>
+            <div id="map" class="map-container"></div>
+            <div class="map-form">
+              <input
+                id="mapSpotName"
+                type="text"
+                placeholder="Nome do spot"
+                maxlength="50"
+              />
+              <div class="map-coords">
+                <span>Lat: <span id="selectedLat">-</span></span>
+                <span>Lng: <span id="selectedLng">-</span></span>
+              </div>
+              <div class="billing-actions">
+                <button id="saveMapSpotBtn" class="btn">Guardar Spot</button>
+                <button id="cancelMapBtn" class="btn secondary">Cancelar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coordinates interface -->
+          <div id="coordsInterface" class="coords-interface hidden">
+            <div class="coords-form">
+              <input
+                id="coordsSpotName"
+                type="text"
+                placeholder="Nome do spot"
+                maxlength="50"
+              />
+              <input
+                id="coordsLat"
+                type="number"
+                step="0.000001"
+                placeholder="Latitude (ex: 38.655)"
+                min="-90"
+                max="90"
+              />
+              <input
+                id="coordsLng"
+                type="number"
+                step="0.000001"
+                placeholder="Longitude (ex: -9.230)"
+                min="-180"
+                max="180"
+              />
+              <div class="billing-actions">
+                <button id="saveCoordsSpotBtn" class="btn">Guardar Spot</button>
+                <button id="cancelCoordsBtn" class="btn secondary">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="feedback-section">
         <div class="feedback-toggle" id="feedbackToggle">
@@ -130,6 +204,7 @@
         <p id="billingMessage" class="billing-message"></p>
       </div>
     </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
