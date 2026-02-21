@@ -92,11 +92,28 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 - ✅ Passwords hashadas com bcrypt
 - ✅ Rate limiting em todas as rotas
 - ✅ Proteção contra injeção MongoDB (mongo-sanitize)
+- ✅ Proteção XSS com sanitização de outputs
 - ✅ Headers de segurança HTTP (helmet)
 - ✅ Validação e sanitização de inputs
 - ✅ Passwords fortes obrigatórias (min 8 caracteres, maiúsculas, minúsculas e números)
 - ✅ CORS configurável
 - ✅ Webhook Stripe com verificação de assinatura
+- ✅ Gestão de erros segura (mensagens genéricas em produção)
+- ✅ Timeout de 15s nas chamadas da extensão
+- ✅ CSP restritiva e permissões mínimas na extensão
+
+### Limites de rate limiting
+
+- Auth: `5` tentativas por `15` minutos
+- API geral: `100` requisições por `15` minutos
+- Subscrição: `10` requisições por `15` minutos
+
+### Vulnerabilidades conhecidas e mitigação
+
+- Vulnerabilidades de dependências: executar regularmente `npm audit`, `npm audit fix`, `npm update`
+- Weak Passwords (legacy): **corrigido** (de mínimo 6 para mínimo 8 + complexidade)
+- Information disclosure: **corrigido** com error handler global seguro
+- MongoDB injection: **corrigido** com `express-mongo-sanitize` + validação de inputs
 
 ### Melhores práticas
 
@@ -108,6 +125,19 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 6. **Stripe**: Usa chaves de teste em dev, chaves live só em produção
 7. **Logs**: Não faças log de passwords, tokens ou dados sensíveis
 8. **2FA**: Ativa autenticação de dois fatores em todas as contas (MongoDB Atlas, Stripe, GitHub)
+
+### Compliance
+
+- **RGPD (GDPR)**: a aplicação processa email, password (hash) e metadados de pagamento via Stripe
+- **PCI DSS**: dados de cartão não são armazenados; processamento realizado pela Stripe (PCI Level 1)
+
+### Reportar vulnerabilidades
+
+1. **NÃO** abrir issue pública para falhas de segurança
+2. Reportar por canal privado de segurança
+3. Incluir descrição, passos para reproduzir, impacto e sugestão de correção (opcional)
+
+Para política completa e procedimento detalhado, consultar `SECURITY.md`.
 
 ## Executar localmente
 

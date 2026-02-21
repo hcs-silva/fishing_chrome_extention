@@ -9,6 +9,7 @@ Esta aplicação foi desenvolvida com segurança em mente. Este documento descre
 ### Backend (API Node.js/Express)
 
 #### 1. Autenticação e Autorização
+
 - ✅ **JWT (JSON Web Tokens)** para autenticação stateless
 - ✅ **Bcrypt** para hash de passwords (salt rounds: 10)
 - ✅ **Passwords fortes obrigatórias**: mínimo 8 caracteres com letras maiúsculas, minúsculas e números
@@ -16,6 +17,7 @@ Esta aplicação foi desenvolvida com segurança em mente. Este documento descre
 - ✅ **Middleware de autenticação** protege rotas sensíveis
 
 #### 2. Proteção contra Ataques
+
 - ✅ **Rate Limiting**: Limita requisições por IP para prevenir brute force e DoS
   - Auth endpoints: 5 tentativas / 15 minutos
   - API endpoints: 100 requisições / 15 minutos
@@ -26,21 +28,25 @@ Esta aplicação foi desenvolvida com segurança em mente. Este documento descre
 - ✅ **Helmet.js**: Headers de segurança HTTP (X-Frame-Options, X-Content-Type-Options, etc.)
 
 #### 3. Validação de Dados
+
 - ✅ **Express-validator** valida e sanitiza todos os inputs
 - ✅ **Normalização de emails** (lowercase, trim)
 - ✅ **Validação de tipos de dados** (email, password, IDs)
 
 #### 4. Gestão de Erros
+
 - ✅ **Mensagens genéricas em produção**: Não expõe detalhes internos
 - ✅ **Logging seguro**: Não faz log de passwords ou tokens
 - ✅ **Error handler global**: Captura e trata erros de forma segura
 
 #### 5. Pagamentos (Stripe)
+
 - ✅ **Webhook signature verification**: Valida autenticidade dos webhooks Stripe
 - ✅ **Metadata validation**: Verifica ownership das sessões
 - ✅ **Test/Live key separation**: Chaves diferentes para dev/prod
 
 #### 6. Base de Dados (MongoDB)
+
 - ✅ **Connection pooling**: Limita conexões simultâneas (max: 10)
 - ✅ **Timeouts configurados**: Previne conexões penduradas
 - ✅ **Passwords não armazenadas em plain text**: Sempre hashadas com bcrypt
@@ -48,16 +54,19 @@ Esta aplicação foi desenvolvida com segurança em mente. Este documento descre
 ### Frontend (Chrome Extension)
 
 #### 1. Armazenamento Seguro
+
 - ✅ **chrome.storage.local** para tokens JWT (não exposto a páginas web)
 - ✅ **Tokens nunca expostos no código frontend**
 - ✅ **Service worker** faz chamadas à API (isolamento)
 
 #### 2. Comunicação Segura
+
 - ✅ **HTTPS obrigatório em produção**
 - ✅ **Timeout em requisições**: 15 segundos
 - ✅ **Validação de respostas da API**
 
 #### 3. Content Security Policy
+
 - ✅ **CSP restritivo**: Apenas scripts da própria extensão
 - ✅ **Permissões mínimas**: Apenas `storage` (removida `geolocation` não utilizada)
 
@@ -81,16 +90,19 @@ nano backend/.env
 ### MongoDB
 
 **Desenvolvimento:**
-```
+
+```text
 MONGO_URI=mongodb://127.0.0.1:27017/fishing-chrome-extension
 ```
 
 **Produção (MongoDB Atlas):**
-```
+
+```text
 MONGO_URI=mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/fishing-chrome-extension?retryWrites=true&w=majority
 ```
 
 ⚠️ **Importante:**
+
 - Usa passwords fortes e únicas
 - Restringe acesso por IP (whitelist)
 - Ativa autenticação no MongoDB
@@ -99,26 +111,31 @@ MONGO_URI=mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/fishing-chrome-ext
 ### Stripe
 
 **Desenvolvimento:**
-```
+
+```text
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 **Produção:**
-```
+
+```text
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ⚠️ **Importante:**
+
 - Nunca uses chaves live em desenvolvimento
-- Verifica webhooks em https://dashboard.stripe.com/webhooks
+- Verifica webhooks em [https://dashboard.stripe.com/webhooks]
 - Testa fluxo completo em modo teste antes de ir para produção
 
 ## Vulnerabilidades Conhecidas e Mitigações
 
 ### 1. Dependency Vulnerabilities
+
 **Mitigação:** Executa regularmente:
+
 ```bash
 cd backend
 npm audit
@@ -127,17 +144,23 @@ npm update
 ```
 
 ### 2. Weak Passwords (Legacy)
+
 **Status:** ✅ CORRIGIDO
+
 - Anteriormente: mínimo 6 caracteres
 - Agora: mínimo 8 caracteres + maiúsculas + minúsculas + números
 
 ### 3. Information Disclosure
+
 **Status:** ✅ CORRIGIDO
+
 - Erro handler global não expõe stack traces em produção
 - Mensagens de erro genéricas para utilizadores
 
 ### 4. MongoDB Injection
+
 **Status:** ✅ CORRIGIDO
+
 - `express-mongo-sanitize` remove caracteres perigosos ($, .)
 - Validação de inputs com express-validator
 
@@ -173,6 +196,7 @@ Responderemos em 48 horas e trabalharemos contigo para resolver o problema.
    - Cuidado com innerHTML
 
 4. **Mantém dependências atualizadas**
+
    ```bash
    npm audit
    npm update
@@ -180,6 +204,7 @@ Responderemos em 48 horas e trabalharemos contigo para resolver o problema.
    ```
 
 5. **Testa em modo produção**
+
    ```bash
    NODE_ENV=production npm start
    ```
@@ -214,11 +239,13 @@ Responderemos em 48 horas e trabalharemos contigo para resolver o problema.
 ### RGPD (GDPR)
 
 Esta aplicação processa dados pessoais:
+
 - Email (identificação)
 - Password (hashada)
 - Dados de pagamento (processados por Stripe, não armazenados)
 
 **Direitos dos utilizadores:**
+
 - Acesso aos dados: GET /api/auth/me
 - Eliminação: [implementar endpoint de eliminação de conta]
 - Portabilidade: Dados em formato JSON
@@ -232,11 +259,13 @@ Não armazenamos dados de cartões. Todo o processamento de pagamentos é feito 
 ### Última auditoria: 2026-02-16
 
 **Ferramentas usadas:**
+
 - npm audit (dependências)
 - Manual code review
 - OWASP Top 10 checklist
 
 **Resultados:**
+
 - ✅ Todas as vulnerabilidades críticas corrigidas
 - ✅ Medidas de segurança implementadas
 - ⚠️ Recomendação: Implementar 2FA para utilizadores no futuro
