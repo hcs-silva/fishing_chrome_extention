@@ -94,8 +94,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "getPrevisao") {
     const spotId = message.spotId;
-    apiRequest(`/previsao?spotId=${encodeURIComponent(spotId)}`, {
+    const lat = message.lat;
+    const lng = message.lng;
+    
+    let queryParams = [];
+    if (spotId) queryParams.push(`spotId=${encodeURIComponent(spotId)}`);
+    if (lat) queryParams.push(`lat=${encodeURIComponent(lat)}`);
+    if (lng) queryParams.push(`lng=${encodeURIComponent(lng)}`);
+    
+    const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+    
+    apiRequest(`/previsao${queryString}`, {
       method: "GET",
+      headers: message.token ? {
+        Authorization: `Bearer ${message.token}`,
+      } : {},
     })
       .then((data) => sendResponse({ ok: true, data }))
       .catch((err) =>
@@ -210,6 +223,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "getPlans") {
     apiRequest("/subscription/plans", {
       method: "GET",
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
+  if (message.type === "getCustomSpots") {
+    apiRequest("/spots/personalizados", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${message.token}`,
+      },
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
+  if (message.type === "addCustomSpot") {
+    apiRequest("/spots/personalizados", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${message.token}`,
+      },
+      body: JSON.stringify({
+        nome: message.nome,
+        lat: message.lat,
+        lng: message.lng,
+      }),
+    })
+      .then((data) => sendResponse({ ok: true, data }))
+      .catch((err) =>
+        sendResponse({ ok: false, error: err.message || "Erro" }),
+      );
+
+    return true;
+  }
+
+  if (message.type === "removeCustomSpot") {
+    apiRequest(`/spots/personalizados/${message.spotId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${message.token}`,
+      },
     })
       .then((data) => sendResponse({ ok: true, data }))
       .catch((err) =>

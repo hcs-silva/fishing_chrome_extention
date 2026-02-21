@@ -6,6 +6,9 @@ const { isPremium } = require('../middleware/planCheck');
 const { apiLimiter } = require('../middleware/rateLimiter');
 const User = require('../models/User');
 
+// Starting ID for custom spots (to avoid conflicts with predefined spots)
+const CUSTOM_SPOT_ID_START = 1000;
+
 /**
  * GET /api/spots/all
  * Get all fishing spots (Premium only)
@@ -104,6 +107,132 @@ router.delete('/favorites/:spotId', apiLimiter, auth, async (req, res) => {
   } catch (error) {
     console.error('Error removing favorite:', error);
     res.status(500).json({ erro: 'Erro ao remover favorito' });
+  }
+});
+
+/**
+ * GET /api/spots/personalizados
+ * Get user's custom spots
+ */
+router.get('/personalizados', apiLimiter, auth, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    res.json({
+      spots: user.spotsPersonalizados || [],
+      total: (user.spotsPersonalizados || []).length,
+      plano: user.plano,
+      limite: user.plano === 'premium' ? null : 1
+    });
+  } catch (error) {
+    console.error('Error getting custom spots:', error);
+    res.status(500).json({ erro: 'Erro ao obter spots personalizados' });
+  }
+});
+
+/**
+ * POST /api/spots/personalizados
+ * Add a custom spot
+ * Free users: limited to 1 spot
+ * Premium users: unlimited spots
+ */
+router.post('/personalizados', apiLimiter, auth, async (req, res) => {
+  try {
+    const { nome, lat, lng } = req.body;
+    const user = req.user;
+
+    // Validate input
+    if (!nome || !lat || !lng) {
+      return res.status(400).json({ erro: 'Nome, latitude e longitude são obrigatórios' });
+    }
+
+    // Validate coordinates
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return res.status(400).json({ erro: 'Coordenadas inválidas' });
+    }
+
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return res.status(400).json({ erro: 'Coordenadas fora do intervalo válido' });
+    }
+
+    // Check spot limit for free users
+    if (user.plano !== 'premium') {
+      if ((user.spotsPersonalizados || []).length >= 1) {
+        return res.status(403).json({ 
+          erro: 'Utilizadores FREE podem adicionar apenas 1 spot. Faz upgrade para Premium para spots ilimitados.',
+          plano: user.plano,
+          limite: 1
+        });
+      }
+    }
+
+    // Generate unique ID for the spot
+    const existingIds = (user.spotsPersonalizados || []).map(s => s.id);
+    const existingIdsSet = new Set(existingIds);
+    let newId = CUSTOM_SPOT_ID_START;
+    while (existingIdsSet.has(newId)) {
+      newId++;
+    }
+
+    // Create new spot
+    const newSpot = {
+      id: newId,
+      nome: nome.trim(),
+      lat: latitude,
+      lng: longitude,
+      criadoEm: new Date()
+    };
+
+    // Add to user's custom spots
+    if (!user.spotsPersonalizados) {
+      user.spotsPersonalizados = [];
+    }
+    user.spotsPersonalizados.push(newSpot);
+    await user.save();
+
+    res.json({
+      mensagem: 'Spot personalizado adicionado',
+      spot: newSpot,
+      total: user.spotsPersonalizados.length,
+      limite: user.plano === 'premium' ? null : 1
+    });
+  } catch (error) {
+    console.error('Error adding custom spot:', error);
+    res.status(500).json({ erro: 'Erro ao adicionar spot personalizado' });
+  }
+});
+
+/**
+ * DELETE /api/spots/personalizados/:spotId
+ * Remove a custom spot
+ */
+router.delete('/personalizados/:spotId', apiLimiter, auth, async (req, res) => {
+  try {
+    const { spotId } = req.params;
+    const user = req.user;
+
+    const spotIdInt = parseInt(spotId);
+    
+    // Check if spot exists
+    const spotIndex = (user.spotsPersonalizados || []).findIndex(s => s.id === spotIdInt);
+    if (spotIndex === -1) {
+      return res.status(404).json({ erro: 'Spot personalizado não encontrado' });
+    }
+
+    // Remove the spot
+    user.spotsPersonalizados.splice(spotIndex, 1);
+    await user.save();
+
+    res.json({
+      mensagem: 'Spot personalizado removido',
+      total: user.spotsPersonalizados.length
+    });
+  } catch (error) {
+    console.error('Error removing custom spot:', error);
+    res.status(500).json({ erro: 'Erro ao remover spot personalizado' });
   }
 });
 

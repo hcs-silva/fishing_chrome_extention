@@ -10,6 +10,15 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 - Cálculo de `scorePeixe` e recomendação no popup da extensão.
 - Seleção rápida de spots portugueses no popup.
 
+### Spots Personalizados (Novo!)
+
+- **FREE**: Adicionar 1 spot personalizado por coordenadas ou mapa interativo.
+- **PREMIUM**: Adicionar spots ilimitados.
+- Interface com mapa Leaflet para seleção visual de spots.
+- Entrada manual de coordenadas (latitude/longitude).
+- Gestão de spots personalizados (visualizar, selecionar, remover).
+- Integração completa com sistema de previsão.
+
 ### Autenticação (FREE)
 
 - Registo de conta FREE (`/api/auth/register`).
@@ -42,7 +51,9 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 
 ### Previsão
 
-- `GET /api/previsao?spotId=<id>`
+- `GET /api/previsao?spotId=<id>` - Obter previsão por spot predefinido
+- `GET /api/previsao?spotId=<id>&lat=<lat>&lng=<lng>` - Obter previsão por spot personalizado
+- `GET /api/previsao?lat=<lat>&lng=<lng>` - Obter previsão por coordenadas
 
 ### Auth
 
@@ -61,6 +72,16 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 - `GET /api/subscription/return`
 - `POST /api/subscription/cancel`
 - `POST /api/subscription/webhook`
+
+### Spots Personalizados
+
+- `GET /api/spots/personalizados` - Listar spots personalizados do utilizador
+- `POST /api/spots/personalizados` - Adicionar novo spot personalizado (FREE: max 1, PREMIUM: ilimitado)
+- `DELETE /api/spots/personalizados/:spotId` - Remover spot personalizado
+- `GET /api/spots/all` - Listar todos os spots predefinidos (Premium only)
+- `GET /api/spots/favorites` - Listar spots favoritos
+- `POST /api/spots/favorites` - Adicionar spot aos favoritos (Premium only)
+- `DELETE /api/spots/favorites/:spotId` - Remover spot dos favoritos
 
 ## Variáveis de ambiente (backend)
 
