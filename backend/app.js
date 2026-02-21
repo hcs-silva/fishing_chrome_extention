@@ -10,31 +10,48 @@ const app = express();
 connectDB();
 
 const isDevelopment = (process.env.NODE_ENV || "development") !== "production";
+const trustProxyRaw = process.env.TRUST_PROXY;
+const trustProxyHops = Number.parseInt(trustProxyRaw || "1", 10);
 
-app.set("trust proxy", true);
+if (Number.isInteger(trustProxyHops) && trustProxyHops >= 0) {
+  app.set("trust proxy", trustProxyHops);
+} else {
+  app.set("trust proxy", 1);
+}
 
 // Security middleware with Stripe-compatible CSP
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://js.stripe.com"],
-      frameSrc: ["'self'", "https://js.stripe.com", "https://checkout.stripe.com", "https://billing.stripe.com"],
-      connectSrc: ["'self'", "https://api.stripe.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Required for inline styles
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://js.stripe.com"],
+        frameSrc: [
+          "'self'",
+          "https://js.stripe.com",
+          "https://checkout.stripe.com",
+          "https://billing.stripe.com",
+        ],
+        connectSrc: ["'self'", "https://api.stripe.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Required for inline styles
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false, // Disabled for extension compatibility
-}));
+    crossOriginEmbedderPolicy: false, // Disabled for extension compatibility
+  }),
+);
 
 // Sanitize user input to prevent MongoDB injection attacks
-app.use(mongoSanitize({
-  replaceWith: '_',
-  onSanitize: ({ req, key }) => {
-    console.warn(`[Security] Sanitized potentially malicious input in ${key}`);
-  },
-}));
+app.use(
+  mongoSanitize({
+    replaceWith: "_",
+    onSanitize: ({ req, key }) => {
+      console.warn(
+        `[Security] Sanitized potentially malicious input in ${key}`,
+      );
+    },
+  }),
+);
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
@@ -48,7 +65,9 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true); // allow tools like curl or extensions without Origin
 
-      const isChromeExtension = /^chrome-extension:\/\/[a-z]{32}$/i.test(origin);
+      const isChromeExtension = /^chrome-extension:\/\/[a-z]{32}$/i.test(
+        origin,
+      );
       if (isChromeExtension) {
         return callback(null, true);
       }
@@ -100,12 +119,12 @@ app.get("/", (req, res) => {
 // Global error handler - prevents leaking sensitive information
 app.use((err, req, res, next) => {
   // Log error for debugging (consider using a proper logging service in production)
-  console.error('[Error]', err.message);
-  
+  console.error("[Error]", err.message);
+
   // Don't leak error details in production - reuse isDevelopment from above
   res.status(err.status || 500).json({
-    erro: isDevelopment ? err.message : 'Ocorreu um erro no servidor',
-    ...(isDevelopment && { stack: err.stack })
+    erro: isDevelopment ? err.message : "Ocorreu um erro no servidor",
+    ...(isDevelopment && { stack: err.stack }),
   });
 });
 
