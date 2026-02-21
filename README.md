@@ -64,18 +64,50 @@ Aplicação composta por API Node/Express + extensão Chrome (Manifest V3) para 
 
 ## Variáveis de ambiente (backend)
 
+⚠️ **IMPORTANTE**: Nunca comitas o ficheiro `.env` com segredos reais. Usa `.env.example` como template.
+
 - `MONGO_URI` (opcional; sem isto usa `mongodb://127.0.0.1:27017/fishing-chrome-extension`)
 - `PORT` (default `5005`)
-- `NODE_ENV`
-- `ALLOWED_ORIGINS`
-- `JWT_SECRET`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
+- `NODE_ENV` (development/production)
+- `ALLOWED_ORIGINS` (domínios permitidos, separados por vírgula)
+- `JWT_SECRET` ⚠️ **CRÍTICO**: Gera um segredo forte com `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
+- `STRIPE_SECRET_KEY` ⚠️ **SENSÍVEL**: Usa chaves de teste (`sk_test_`) em desenvolvimento
+- `STRIPE_WEBHOOK_SECRET` ⚠️ **SENSÍVEL**: Sem espaços (ex.: `STRIPE_WEBHOOK_SECRET=whsec_xxx`)
 - `STRIPE_PRICE_MONTHLY`
 - `STRIPE_PRICE_YEARLY`
 - `FRONTEND_URL`
 
-> ⚠️ Importante: em `STRIPE_WEBHOOK_SECRET`, não deixes espaços antes/depois do valor (ex.: `STRIPE_WEBHOOK_SECRET=whsec_xxx`).
+### Configuração segura
+
+1. Copia `.env.example` para `.env`: `cp backend/.env.example backend/.env`
+2. Preenche os valores no `.env` com as tuas credenciais
+3. **NUNCA** partilhes ou comitas o ficheiro `.env`
+4. Em produção, usa sempre HTTPS e credenciais de produção
+
+## Segurança
+
+### Medidas implementadas
+
+- ✅ Autenticação JWT com tokens seguros
+- ✅ Passwords hashadas com bcrypt
+- ✅ Rate limiting em todas as rotas
+- ✅ Proteção contra injeção MongoDB (mongo-sanitize)
+- ✅ Headers de segurança HTTP (helmet)
+- ✅ Validação e sanitização de inputs
+- ✅ Passwords fortes obrigatórias (min 8 caracteres, maiúsculas, minúsculas e números)
+- ✅ CORS configurável
+- ✅ Webhook Stripe com verificação de assinatura
+
+### Melhores práticas
+
+1. **Passwords**: Mínimo 8 caracteres com letras maiúsculas, minúsculas e números
+2. **Secrets**: Gera segredos fortes e únicos para produção
+3. **HTTPS**: Usa sempre HTTPS em produção (nunca HTTP)
+4. **Dependências**: Mantém atualizadas com `npm audit` e `npm update`
+5. **MongoDB**: Usa autenticação e restringe acesso por IP
+6. **Stripe**: Usa chaves de teste em dev, chaves live só em produção
+7. **Logs**: Não faças log de passwords, tokens ou dados sensíveis
+8. **2FA**: Ativa autenticação de dois fatores em todas as contas (MongoDB Atlas, Stripe, GitHub)
 
 ## Executar localmente
 
