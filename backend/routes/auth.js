@@ -13,8 +13,10 @@ const { authLimiter, apiLimiter } = require('../middleware/rateLimiter');
  * Register a new user
  */
 router.post('/register', authLimiter, [
-  body('email').isEmail().withMessage('Email inválido'),
-  body('password').isLength({ min: 6 }).withMessage('Password deve ter no mínimo 6 caracteres')
+  body('email').isEmail().normalizeEmail().withMessage('Email inválido'),
+  body('password')
+    .isLength({ min: 8 }).withMessage('Password deve ter no mínimo 8 caracteres')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password deve conter pelo menos uma letra maiúscula, uma minúscula e um número')
 ], async (req, res) => {
   try {
     // Validate input
@@ -50,7 +52,7 @@ router.post('/register', authLimiter, [
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
-      console.log('User registered:', user.email);
+    
     res.status(201).json({
       mensagem: 'Utilizador registrado com sucesso',
       user: {
@@ -71,7 +73,7 @@ router.post('/register', authLimiter, [
  * Login user
  */
 router.post('/login', authLimiter, [
-  body('email').isEmail().withMessage('Email inválido'),
+  body('email').isEmail().normalizeEmail().withMessage('Email inválido'),
   body('password').exists().withMessage('Password é obrigatório')
 ], async (req, res) => {
   try {
