@@ -27,7 +27,9 @@ async function requestWithBaseUrl(baseUrl, path, options = {}) {
     if (error && error.name === "AbortError") {
       throw new Error("Timeout na ligação à API");
     }
-    throw error;
+    throw new Error(
+      `Falha de ligação a ${baseUrl} (backend offline, CORS ou rede)`,
+    );
   } finally {
     clearTimeout(timeoutId);
   }
@@ -81,7 +83,8 @@ async function apiRequest(path, options = {}) {
     );
   }
 
-  throw new Error(errors[0]?.message || "API indisponível");
+  const remoteError = errors.find((entry) => !entry.baseUrl.includes("localhost"));
+  throw new Error(remoteError?.message || errors[0]?.message || "API indisponível");
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

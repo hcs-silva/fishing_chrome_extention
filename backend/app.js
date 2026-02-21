@@ -48,12 +48,16 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true); // allow tools like curl or extensions without Origin
 
+      const isChromeExtension = /^chrome-extension:\/\/[a-z]{32}$/i.test(origin);
+      if (isChromeExtension) {
+        return callback(null, true);
+      }
+
       if (isDevelopment) {
         const isLocalhost =
           /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
-        const isChromeExtension = origin.startsWith("chrome-extension://");
 
-        if (isLocalhost || isChromeExtension) {
+        if (isLocalhost) {
           return callback(null, true);
         }
       }
