@@ -11,6 +11,8 @@ connectDB();
 
 const isDevelopment = (process.env.NODE_ENV || "development") !== "production";
 
+app.set("trust proxy", true);
+
 // Security middleware with Stripe-compatible CSP
 app.use(helmet({
   contentSecurityPolicy: {
